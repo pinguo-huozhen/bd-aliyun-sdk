@@ -4,8 +4,9 @@ import java.io.ByteArrayOutputStream
 import java.net.{URL, URLConnection}
 
 import org.apache.commons.io.IOUtils
+import us.pinguo.bigdata.dataplus.DataPlusUtil
 
-trait IOUtil {
+trait IOUtil extends DataPlusUtil {
 
   def readRemoteToBuffer(url: String, timeOut: Int = 5000) = {
     val conn: URLConnection = new URL(url).openConnection()

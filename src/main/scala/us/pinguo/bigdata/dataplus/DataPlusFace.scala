@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 
 import org.apache.commons.codec.binary.StringUtils
 import org.apache.commons.io.IOUtils
+import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
@@ -15,23 +16,25 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
   implicit val formatter = DefaultFormats
   val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def faceDetect(body: Array[Byte]) = {
-    val body = constructBody(0, 0, 1, signature.base64Encode(body))
+  def faceDetect(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT) = {
+    val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
 
-    val headers = signature.header(requestURL, StringUtils.getBytesUtf8(body), HttpPost.METHOD_NAME)
+    val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
     val httpClient: CloseableHttpClient = HttpClients.createDefault()
+
     val httpPost: HttpPost = new HttpPost(requestURL)
+    httpPost.setConfig(requestSetting(timeOut))
     headers.foreach(header => httpPost.setHeader(header._1, header._2))
-    httpPost.setEntity(new StringEntity(body, "utf-8"))
+    httpPost.setEntity(new StringEntity(base64Body))
 
     val response = httpClient.execute(httpPost)
-    if (response.getStatusLine.getStatusCode == 200) {
+    if (response.getStatusLine.getStatusCode == SUCCESS_CODE) {
       val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
       val inputStream = response.getEntity.getContent
       IOUtils.copy(inputStream, boStream)
       inputStream.close()
       httpClient.close()
-      ImageResponse(200, new String(boStream.toByteArray))
+      ImageResponse(SUCCESS_CODE, new String(boStream.toByteArray))
     } else {
       val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
       val inputStream = response.getEntity.getContent
