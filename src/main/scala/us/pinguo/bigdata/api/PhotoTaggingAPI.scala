@@ -84,9 +84,4 @@ object PhotoTaggingAPI {
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imagewh: ImageWH = null)
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception
-
-  def main(args: Array[String]): Unit = {
-    val aa = Array(1,2,3,4)
-    print(aa.sum)
-  }
 }
