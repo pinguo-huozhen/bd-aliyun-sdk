@@ -76,13 +76,4 @@ object PhotoTaggingAPI {
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null)
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception
-
-  //  case class
-  def main(args: Array[String]): Unit = {
-    val api = new PhotoTaggingAPI("ZRqfvvxja3SRPtD6", "Xa3fohQ53T1q4hTzSBvxzpvGkTgd3U", "dataplus_62655")
-    //item
-    //    api.tagging("http://dn-phototask.qbox.me/Frn41CRAHsDEXK_MF3xKMtW5Gj4P?imageView2/0/h/600")
-    //face
-    api.tagging("http://dn-phototask.qbox.me/Fn0Fzlc60lwX2FG0q7LC_bPzHLGC?imageView2/0/h/600")
-  }
 }
