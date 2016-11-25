@@ -10,7 +10,7 @@ import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
 import us.pinguo.bigdata.dataplus.DataPlusSignature._
 
 
-class DataPlusSignature(keys: DataPlusKeys) {
+class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
 
   def header(requestUrl: String, body: Array[Byte], method: String, accept: String = "json", contentType: String = "application/json") = {
     val gmtTime = currentGMTTime
@@ -35,7 +35,7 @@ class DataPlusSignature(keys: DataPlusKeys) {
     mac.doFinal(data.getBytes())
   }
 
-  def base64Encode(bytes: Array[Byte]) = Base64.getEncoder.encodeToString(bytes)
+  def base64Encode(bytes: Array[Byte]): String = Base64.getEncoder.encodeToString(bytes)
 
   private def urlPath(requestUrl: String) = {
     val url = new URL(requestUrl)

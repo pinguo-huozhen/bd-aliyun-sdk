@@ -11,8 +11,7 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
 
-class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil {
-  implicit val formatter = DefaultFormats
+class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
 
   val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
   val faceHandler = new DataPlusFace(signature, organize_code)
@@ -20,6 +19,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
   val exifHandler = new ExifRetrieve()
 
   def tagging(imageUrl: String, timeOut: Int = 10000): TaggingResponse = {
+    implicit val formatter = DefaultFormats
     var faceTag: FaceTag = null
     var itemTag: ItemTag = null
     var exifTag: ExifTag = null
