@@ -3,7 +3,7 @@ package us.pinguo.bigdata.dataplus
 import org.apache.http.client.config.RequestConfig
 
 
-trait DataPlusUtil {
+trait DataPlusUtil extends Serializable {
 
   case class ImageResponse(code: Int, json: String)
 

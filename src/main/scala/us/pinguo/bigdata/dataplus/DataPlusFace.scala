@@ -13,10 +13,11 @@ import org.json4s.jackson.Serialization
 import us.pinguo.bigdata.dataplus.DataPlusFace._
 
 class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusUtil {
-  implicit val formatter = DefaultFormats
-  val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def faceDetect(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT) = {
+  private val requestURL = PATTERN_FACE_URL.format(organize_code)
+
+  def faceDetect(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): ImageResponse = {
+    implicit val formatter = DefaultFormats
     val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
 
     val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
@@ -46,6 +47,7 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {
+    implicit val formatter = DefaultFormats
     val settingMap = Map("image" -> DataSetting(50, base64Body),
       "fea_type" -> DataSetting(10, feaType),
       "landmark_type" -> DataSetting(10, landmarkType),

@@ -7,7 +7,7 @@ import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 
 
-class ExifRetrieve extends DataPlusUtil {
+class ExifRetrieve extends DataPlusUtil with Serializable {
 
   def getExif(requestUrl: String, timeOut: Int = 5000) = {
     val httpclient: CloseableHttpClient = HttpClients.createDefault()
