@@ -4,8 +4,6 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
-import javax.imageio.stream.FileImageOutputStream
-
 import org.json4s.DefaultFormats
 import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
