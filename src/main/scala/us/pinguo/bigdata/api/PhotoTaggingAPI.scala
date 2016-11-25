@@ -57,9 +57,9 @@ object PhotoTaggingAPI {
 
   case class Bbox(height: Float, width: Float, xmin: Float, ymin: Float)
 
-  case class Annotation(`class`: String, score: String, bbox: Bbox)
+  case class Annotation(`class`: String, score: Float, bbox: Bbox)
 
-  case class Tag(confidence: String, value: String)
+  case class Tag(confidence: Float, value: String)
 
   case class ItemTag(annotation: List[Annotation] = Nil, tags: List[Tag] = Nil)
 
@@ -76,4 +76,13 @@ object PhotoTaggingAPI {
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null)
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception
+
+  //  case class
+  def main(args: Array[String]): Unit = {
+    val api = new PhotoTaggingAPI("ZRqfvvxja3SRPtD6", "Xa3fohQ53T1q4hTzSBvxzpvGkTgd3U", "dataplus_62655")
+    //item
+    //    api.tagging("http://dn-phototask.qbox.me/Frn41CRAHsDEXK_MF3xKMtW5Gj4P?imageView2/0/h/600")
+    //face
+    api.tagging("http://dn-phototask.qbox.me/Fn0Fzlc60lwX2FG0q7LC_bPzHLGC?imageView2/0/h/600")
+  }
 }
