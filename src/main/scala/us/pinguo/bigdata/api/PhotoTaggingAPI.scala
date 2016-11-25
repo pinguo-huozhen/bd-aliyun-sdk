@@ -17,33 +17,37 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
   val itemHandler = new DataPlusItem(signature, organize_code)
   val exifHandler = new ExifRetrieve()
 
-  def tagging(imageUrl: String, timeOut: Int = 5000): TaggingResponse = {
-    //to do Exception
-    val body = readRemoteToBuffer(imageUrl, timeOut)
+  def tagging(imageUrl: String, timeOut: Int = 10000): TaggingResponse = {
     var faceTag: FaceTag = null
     var itemTag: ItemTag = null
     var exifTag: ExifTag = null
+    try {
+      val body = readRemoteToBuffer(imageUrl, timeOut)
 
-    val face = faceHandler.faceDetect(body, timeOut)
-    if (face.code == SUCCESS_CODE) {
-      val json = parse(face.json)
-      var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
-      jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
+      val face = faceHandler.faceDetect(body, timeOut)
+      if (face.code == SUCCESS_CODE) {
+        val json = parse(face.json)
+        var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
+        jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
 
-      val faceResponse = parse(jsonString).extract[FaceResponse]
-      if (faceResponse.errno == 0) {
-        faceTag = FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-      }
-    }
+        val faceResponse = parse(jsonString).extract[FaceResponse]
+        if (faceResponse.errno == 0) {
+          faceTag = FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
+        } else throw PhotoTaggingException(face.code, s"face response errno [${faceResponse.errno}]")
+      } else throw PhotoTaggingException(face.code, s"face response: [${face.json}]")
 
-    val item = itemHandler.itemDetect(body, timeOut)
-    if (item.code == SUCCESS_CODE) {
-      itemTag = parse(item.json).extract[ItemTag]
-    }
+      val item = itemHandler.itemDetect(body, timeOut)
+      if (item.code == SUCCESS_CODE) {
+        itemTag = parse(item.json).extract[ItemTag]
+      } else throw PhotoTaggingException(item.code, s"item response: [${item.json}]")
 
-    val exif = exifHandler.getExif(s"$imageUrl&exif", timeOut)
-    if (exif.code == SUCCESS_CODE) {
-      exifTag = parse(exif.json).extract[ExifTag]
+      val exif = exifHandler.getExif(s"$imageUrl&exif", timeOut)
+      if (exif.code == SUCCESS_CODE) {
+        exifTag = parse(exif.json).extract[ExifTag]
+      } else throw PhotoTaggingException(exif.code, s"exif response: [${exif.json}]")
+    } catch {
+      case pex: PhotoTaggingException => throw pex
+      case ex: Exception => throw PhotoTaggingException(500, ex.getMessage)
     }
     TaggingResponse(faceTag, itemTag, exifTag)
   }
@@ -71,4 +75,5 @@ object PhotoTaggingAPI {
 
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null)
 
+  case class PhotoTaggingException(code: Int, msg: String) extends Exception
 }
