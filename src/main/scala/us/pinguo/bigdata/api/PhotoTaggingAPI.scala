@@ -1,6 +1,10 @@
 package us.pinguo.bigdata.api
 
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
 import java.util.regex.Pattern
+import javax.imageio.ImageIO
+import javax.imageio.stream.FileImageOutputStream
 
 import org.json4s.DefaultFormats
 import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
@@ -21,8 +25,12 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
     var faceTag: FaceTag = null
     var itemTag: ItemTag = null
     var exifTag: ExifTag = null
+    var imageWH: ImageWH = null
     try {
       val body = readRemoteToBuffer(imageUrl, timeOut)
+
+      val img: BufferedImage = ImageIO.read(new ByteArrayInputStream(body))
+      imageWH = ImageWH(img.getWidth, img.getHeight)
 
       val face = faceHandler.faceDetect(body, timeOut)
       if (face.code == SUCCESS_CODE) {
@@ -49,7 +57,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
       case pex: PhotoTaggingException => throw pex
       case ex: Exception => throw PhotoTaggingException(500, ex.getMessage)
     }
-    TaggingResponse(faceTag, itemTag, exifTag)
+    TaggingResponse(faceTag, itemTag, exifTag, imageWH)
   }
 }
 
@@ -73,7 +81,9 @@ object PhotoTaggingAPI {
                      ColorSpace: ExifInfo, FlashPixVersion: ExifInfo, DateTime: ExifInfo,
                      ExifVersion: ExifInfo, XResolution: ExifInfo)
 
-  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null)
+  case class ImageWH(width: Int, height: Int)
+
+  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imagewh: ImageWH = null)
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception
 }
