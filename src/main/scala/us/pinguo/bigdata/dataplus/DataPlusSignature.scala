@@ -21,6 +21,8 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
       "Authorization" -> s"Dataplus ${keys.access_id}:$signString")
   }
 
+  def base64Encode(bytes: Array[Byte]): String = Base64.getEncoder.encodeToString(bytes)
+
   private def sign(requestUrl: String, body: Array[Byte], method: String, accept: String, contentType: String, gmtTime: String) = {
     val md5Body = base64Encode(DigestUtils.md5(body))
     val urlStr = urlPath(requestUrl)
@@ -34,8 +36,6 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
     mac.init(signKey)
     mac.doFinal(data.getBytes())
   }
-
-  def base64Encode(bytes: Array[Byte]): String = Base64.getEncoder.encodeToString(bytes)
 
   private def urlPath(requestUrl: String) = {
     val url = new URL(requestUrl)
@@ -53,8 +53,8 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
 }
 
 object DataPlusSignature {
+
   val HMAC_SHA1 = "HmacSHA1"
-  val PATTERN_IMAGE = "http://dn-phototask.qbox.me/%s?imageView2/0/h/600"
 
   case class DataPlusKeys(access_id: String, access_secret: String)
 

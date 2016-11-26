@@ -4,46 +4,42 @@ import java.io.ByteArrayOutputStream
 
 import org.apache.commons.codec.binary.StringUtils
 import org.apache.commons.io.IOUtils
-import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
 import us.pinguo.bigdata.dataplus.DataPlusFace._
+import us.pinguo.bigdata.dataplus.DataPlusUtil.ImageResponse
 
 class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusUtil {
 
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def faceDetect(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): ImageResponse = {
+  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): ImageResponse = {
     implicit val formatter = DefaultFormats
-    val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
+    try {
+      val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
 
-    val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
-    val httpClient: CloseableHttpClient = HttpClients.createDefault()
+      val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
+      val httpClient: CloseableHttpClient = HttpClients.createDefault()
 
-    val httpPost: HttpPost = new HttpPost(requestURL)
-    httpPost.setConfig(requestSetting(timeOut))
-    headers.foreach(header => httpPost.setHeader(header._1, header._2))
-    httpPost.setEntity(new StringEntity(base64Body))
+      val httpPost: HttpPost = new HttpPost(requestURL)
+      httpPost.setConfig(requestSetting(timeOut))
+      headers.foreach(header => httpPost.setHeader(header._1, header._2))
+      httpPost.setEntity(new StringEntity(base64Body))
 
-    val response = httpClient.execute(httpPost)
-    if (response.getStatusLine.getStatusCode == SUCCESS_CODE) {
-      val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
-      val inputStream = response.getEntity.getContent
-      IOUtils.copy(inputStream, boStream)
-      inputStream.close()
-      httpClient.close()
-      ImageResponse(SUCCESS_CODE, new String(boStream.toByteArray))
-    } else {
+      val response = httpClient.execute(httpPost)
       val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
       val inputStream = response.getEntity.getContent
       IOUtils.copy(inputStream, boStream)
       inputStream.close()
       httpClient.close()
       ImageResponse(response.getStatusLine.getStatusCode, new String(boStream.toByteArray))
+    } catch {
+      case ex:Exception => ImageResponse(FATAL_CODE, ex.getMessage)
     }
+
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {
@@ -55,10 +51,10 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
     Serialization.write(FaceBody(List(settingMap)))
   }
 
-
 }
 
 object DataPlusFace {
+
   val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis"
 
   case class DataSetting(dataType: Int, dataValue: Any)
