@@ -24,20 +24,21 @@ trait DataPlusUtil extends Serializable {
       .build()
   }
 
-  def retry(f: => ImageResponse, times: Int = DEFAULT_RETRY):ImageResponse = {
+  def retry(f: => ImageResponse, times: Int = DEFAULT_RETRY): ImageResponse = {
     var count = times
-    var response:ImageResponse = null
+    var response: ImageResponse = null
     do {
-      println(count)
       response = f
       count -= 1
-      if(response.code!=SUCCESS_CODE) Thread.sleep(500)
-    } while(response.code!=SUCCESS_CODE && count>0)
+      if (response.code != SUCCESS_CODE) Thread.sleep(500)
+    } while (response.code != SUCCESS_CODE && count > 0)
     response
   }
 
 }
 
 object DataPlusUtil {
+
   case class ImageResponse(code: Int, json: String)
+
 }
