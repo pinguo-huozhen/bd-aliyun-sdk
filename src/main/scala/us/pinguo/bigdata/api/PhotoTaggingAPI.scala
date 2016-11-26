@@ -18,14 +18,14 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
   val itemHandler = new DataPlusItem(signature, organize_code)
   val exifHandler = new ExifRetrieve()
 
-  def tagging(imageUrl: String, timeOut: Int = 10000): TaggingResponse = {
+  def tagging(imageUrl: String, timeOut: Int = 10000, retryTimes:Int = DEFAULT_RETRY): TaggingResponse = {
     implicit val formatter = DefaultFormats
     var faceTag: FaceTag = null
     var itemTag: ItemTag = null
     var exifTag: ExifTag = null
     var imageWH: ImageWH = null
     try {
-      val body = loadImage(imageUrl, timeOut)
+      val body = loadImage(imageUrl, timeOut, retryTimes)
       if(body.isEmpty) throw PhotoTaggingException(FATAL_CODE, s"can not load image:[$imageUrl]")
 
       val img: BufferedImage = ImageIO.read(new ByteArrayInputStream(body))
@@ -41,7 +41,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 //        exif <- retry(exifHandler.request(exifUrl, timeOut))
 //      } yield (face, item, exif)
 
-      val face = retry(faceHandler.request(body, timeOut))
+      val face = retry(faceHandler.request(body, timeOut), retryTimes)
       if (face.code == SUCCESS_CODE) {
         val json = parse(face.json)
         var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
@@ -53,12 +53,12 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
         } else throw PhotoTaggingException(face.code, s"face response errno [${faceResponse.errno}]")
       } else throw PhotoTaggingException(face.code, s"face response: [${face.json}]")
 
-      val item = retry(itemHandler.request(body, timeOut))
+      val item = retry(itemHandler.request(body, timeOut), retryTimes)
       if (item.code == SUCCESS_CODE) {
         itemTag = parse(item.json).extract[ItemTag]
       } else throw PhotoTaggingException(item.code, s"item response: [${item.json}]")
 
-      val exif = retry(exifHandler.request(exifUrl, timeOut))
+      val exif = retry(exifHandler.request(exifUrl, timeOut), retryTimes)
       if (exif.code == SUCCESS_CODE) {
         exifTag = parse(exif.json).extract[ExifTag]
       } else throw PhotoTaggingException(exif.code, s"exif response: [${exif.json}]")
