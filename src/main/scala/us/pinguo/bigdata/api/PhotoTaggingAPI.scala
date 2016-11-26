@@ -81,7 +81,9 @@ object PhotoTaggingAPI {
 
   case class ImageWH(width: Int, height: Int)
 
-  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imagewh: ImageWH = null)
+  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null)
 
-  case class PhotoTaggingException(code: Int, msg: String) extends Exception
+  case class PhotoTaggingException(code: Int, msg: String) extends Exception {
+    override def getMessage: String = s"$code - $msg"
+  }
 }
