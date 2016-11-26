@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.util.regex.Pattern
 import javax.imageio.ImageIO
-
 import org.json4s.DefaultFormats
 import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
@@ -95,6 +94,7 @@ object PhotoTaggingAPI {
 
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null)
 
-  case class PhotoTaggingException(code: Int, msg: String) extends Exception
-
+  case class PhotoTaggingException(code: Int, msg: String) extends Exception {
+    override def getMessage: String = s"$code - $msg"
+  }
 }
