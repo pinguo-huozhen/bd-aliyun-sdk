@@ -33,7 +33,9 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
         null
     }
 
-    val img: BufferedImage = ImageIO.read(new ByteArrayInputStream(body))
+    val stream = new ByteArrayInputStream(body)
+    val img: BufferedImage = ImageIO.read(stream)
+    stream.close()
 
     val exifUrl: String = if (imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
 
