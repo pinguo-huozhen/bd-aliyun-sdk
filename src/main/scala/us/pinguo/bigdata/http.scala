@@ -11,16 +11,18 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object http {
-  def apply(uri: String, retires: Int = 5, timeout: FiniteDuration = 60 seconds): HttpRequest = new HttpRequest(uri, retires, timeout)
-}
-
-class HttpRequest(uri: String, retires: Int, timeout: FiniteDuration) {
-  private val client = Http.configure { config =>
+  val client: Http = Http.configure { config =>
     config
-      .setConnectionTimeoutInMs(timeout.toMillis.toInt)
-      .setRequestTimeoutInMs(timeout.toMillis.toInt)
+      .setConnectionTimeoutInMs(15000)
+      .setRequestTimeoutInMs(10000)
       .setUseRawUrl(true)
   }
+
+  def apply(uri: String, retires: Int = 5, timeout: FiniteDuration = 15 seconds): HttpRequest = new HttpRequest(client, uri, retires, timeout)
+}
+
+class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDuration) {
+
   private var req = url(uri)
 
   def query(parameters: (String, String)*): HttpRequest = {
@@ -83,7 +85,9 @@ class HttpRequest(uri: String, retires: Int, timeout: FiniteDuration) {
     response
   }
 
-  def requestForBytes: Array[Byte] = request.getResponseBodyAsBytes
+  def requestForBytes: Array[Byte] = {
+    request.getResponseBodyAsBytes
+  }
 
   def requestForString: String = {
     try request.getResponseBody catch {
