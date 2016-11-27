@@ -19,9 +19,9 @@ trait IOUtil extends DataPlusUtil {
     response
   }
 
-  def readRemoteToBuffer(url: String, timeOut: Int = DEFAULT_TIMEOUT):Array[Byte] = {
+  def readRemoteToBuffer(uri: String, timeOut: Int = DEFAULT_TIMEOUT):Array[Byte] = {
     try {
-      val conn: URLConnection = new URL(url).openConnection()
+      val conn: URLConnection = new URL(uri).openConnection()
       conn.setConnectTimeout(timeOut)
       conn.setReadTimeout(timeOut)
       conn.connect()

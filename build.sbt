@@ -9,7 +9,8 @@ lazy val `bd-aliyun-sdk` = (project in file("."))
       "org.apache.directory.studio" % "org.apache.commons.io" % "2.4",
       "org.json4s" %% "json4s-jackson" % "3.2.11",
       "org.json4s" %% "json4s-ext" % "3.2.11",
-      "com.typesafe" % "config" % "1.3.1"
+      "com.typesafe" % "config" % "1.3.1",
+      "net.databinder.dispatch" %% "dispatch-core" % "0.11.2" withSources()
     )
   )
     

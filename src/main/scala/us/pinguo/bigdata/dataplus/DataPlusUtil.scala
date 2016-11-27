@@ -8,7 +8,7 @@ trait DataPlusUtil extends Serializable {
 
   val SUCCESS_CODE = 200
 
-  val SERVER_DOWN_CODE = 503
+  val SERVER_BUSY = 503
 
   val FATAL_CODE = 400
 
@@ -16,7 +16,7 @@ trait DataPlusUtil extends Serializable {
 
   val DEFAULT_RETRY = 3
 
-  def requestSetting(timeOut: Int = DEFAULT_TIMEOUT) = {
+  def requestSetting(timeOut: Int = DEFAULT_TIMEOUT): RequestConfig = {
     RequestConfig.custom()
       .setConnectTimeout(timeOut)
       .setConnectionRequestTimeout(timeOut)
@@ -24,14 +24,17 @@ trait DataPlusUtil extends Serializable {
       .build()
   }
 
-  def retry(f: => ImageResponse, times: Int = DEFAULT_RETRY): ImageResponse = {
+  def retry(name: String, f: => ImageResponse, times: Int = DEFAULT_RETRY): ImageResponse = {
+    val start = System.currentTimeMillis()
     var count = times
     var response: ImageResponse = null
     do {
       response = f
       count -= 1
-      if (response.code != SUCCESS_CODE) Thread.sleep(500)
-    } while (response.code != SUCCESS_CODE && count > 0)
+      if (response.code == SERVER_BUSY) Thread.sleep(500)
+    } while (response.code == SERVER_BUSY && count > 0)
+    val cost = System.currentTimeMillis() - start
+    println(s"request [name] cost [$cost]")
     response
   }
 

@@ -2,72 +2,71 @@ package us.pinguo.bigdata.api
 
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
-import java.util.regex.Pattern
+import java.util.concurrent.Executors
 import javax.imageio.ImageIO
-import org.json4s.DefaultFormats
-import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
-import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
-import org.json4s._
+
+import org.json4s.{DefaultFormats, _}
 import org.json4s.jackson.JsonMethods._
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
+import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
+import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
+import us.pinguo.bigdata.http
+
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.language.postfixOps
 
 class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
 
-  val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
-  val faceHandler = new DataPlusFace(signature, organize_code)
-  val itemHandler = new DataPlusItem(signature, organize_code)
-  val exifHandler = new ExifRetrieve()
-
-  def tagging(imageUrl: String, timeOut: Int = 10000, retryTimes:Int = DEFAULT_RETRY): TaggingResponse = {
+  def tagging(imageUrl: String, timeOut: Int = 15000, retryTimes: Int = DEFAULT_RETRY): TaggingResponse = {
+    implicit val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
     implicit val formatter = DefaultFormats
-    var faceTag: FaceTag = null
-    var itemTag: ItemTag = null
-    var exifTag: ExifTag = null
-    var imageWH: ImageWH = null
-    try {
-      val body = loadImage(imageUrl, timeOut, retryTimes)
-      if(body.isEmpty) throw PhotoTaggingException(FATAL_CODE, s"can not load image:[$imageUrl]")
 
-      val img: BufferedImage = ImageIO.read(new ByteArrayInputStream(body))
-      imageWH = ImageWH(img.getWidth, img.getHeight)
+    val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
+    val faceHandler = new DataPlusFace(signature, organize_code)
+    val itemHandler = new DataPlusItem(signature, organize_code)
 
-      val exifUrl:String = if(imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
-//      val face = retry(faceHandler.request(body, timeOut))
-//      val item = retry(itemHandler.request(body, timeOut))
-//      val exif = retry(exifHandler.request(exifUrl, timeOut))
-//      val (face:ImageResponse, item:ImageResponse, exif:ImageResponse) = for {
-//        face <- retry(faceHandler.request(body, timeOut))
-//        item <- retry(itemHandler.request(body, timeOut))
-//        exif <- retry(exifHandler.request(exifUrl, timeOut))
-//      } yield (face, item, exif)
+    var errors = Map[String, String]()
 
-      val face = retry(faceHandler.request(body, timeOut), retryTimes)
-      if (face.code == SUCCESS_CODE) {
-        val json = parse(face.json)
-        var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
-        jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
-
-        val faceResponse = parse(jsonString).extract[FaceResponse]
-        if (faceResponse.errno == 0) {
-          faceTag = FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-        } else throw PhotoTaggingException(face.code, s"face response errno [${faceResponse.errno}]")
-      } else throw PhotoTaggingException(face.code, s"face response: [${face.json}]")
-
-      val item = retry(itemHandler.request(body, timeOut), retryTimes)
-      if (item.code == SUCCESS_CODE) {
-        itemTag = parse(item.json).extract[ItemTag]
-      } else throw PhotoTaggingException(item.code, s"item response: [${item.json}]")
-
-      val exif = retry(exifHandler.request(exifUrl, timeOut), retryTimes)
-      if (exif.code == SUCCESS_CODE) {
-        exifTag = parse(exif.json).extract[ExifTag]
-      } else throw PhotoTaggingException(exif.code, s"exif response: [${exif.json}]")
-    } catch {
-      case pex: PhotoTaggingException => throw pex
-      case ex: Exception => throw PhotoTaggingException(500, ex.getMessage)
+    val body = try http(imageUrl).requestForBytes catch {
+      case e: Throwable =>
+        errors += ("download_image" -> e.getMessage)
+        null
     }
-    TaggingResponse(faceTag, itemTag, exifTag, imageWH)
+
+    val img: BufferedImage = ImageIO.read(new ByteArrayInputStream(body))
+
+    val exifUrl: String = if (imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
+
+    val response = for {
+      faceTag <- Future {
+        try if (!errors.contains("download_image")) faceHandler.request(body) else null
+        catch {
+          case e: Throwable => errors += ("face_api" -> e.getMessage)
+            null
+        }
+      }
+      itemTag <- Future {
+        try if (!errors.contains("download_image")) itemHandler.request(body) else null
+        catch {
+          case e: Throwable =>
+            errors += ("item_api" -> e.getMessage)
+            null
+        }
+      }
+      exifTag <- Future {
+        try parse(http(exifUrl).requestForString).extract[ExifTag]
+        catch {
+          case e: Throwable =>
+            errors += ("etag_api" -> e.getMessage)
+            null
+        }
+      }
+    } yield TaggingResponse(faceTag, itemTag, exifTag, imageCalWH = ImageWH(img.getWidth, img.getHeight), errors.map(x => s"${x._1}=${x._2}").mkString(", "))
+
+    Await.result(response, timeOut millis)
   }
+
 }
 
 object PhotoTaggingAPI {
@@ -92,9 +91,10 @@ object PhotoTaggingAPI {
 
   case class ImageWH(width: Int, height: Int)
 
-  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null, error_message:String = null)
+  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null, error_message: String = null)
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception {
     override def getMessage: String = s"$code - $msg"
   }
+
 }

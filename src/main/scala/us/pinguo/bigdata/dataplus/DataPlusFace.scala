@@ -1,45 +1,28 @@
 package us.pinguo.bigdata.dataplus
 
-import java.io.ByteArrayOutputStream
+import java.util.regex.Pattern
 
 import org.apache.commons.codec.binary.StringUtils
-import org.apache.commons.io.IOUtils
 import org.apache.http.client.methods.HttpPost
-import org.apache.http.entity.StringEntity
-import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.json4s.DefaultFormats
+import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization
+import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag, PhotoTaggingException}
 import us.pinguo.bigdata.dataplus.DataPlusFace._
-import us.pinguo.bigdata.dataplus.DataPlusUtil.ImageResponse
+import us.pinguo.bigdata.http
 
 class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusUtil {
 
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): ImageResponse = {
-    implicit val formatter = DefaultFormats
-    try {
-      val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
-
-      val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
-      val httpClient: CloseableHttpClient = HttpClients.createDefault()
-
-      val httpPost: HttpPost = new HttpPost(requestURL)
-      httpPost.setConfig(requestSetting(timeOut))
-      headers.foreach(header => httpPost.setHeader(header._1, header._2))
-      httpPost.setEntity(new StringEntity(base64Body))
-
-      val response = httpClient.execute(httpPost)
-      val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
-      val inputStream = response.getEntity.getContent
-      IOUtils.copy(inputStream, boStream)
-      inputStream.close()
-      httpClient.close()
-      ImageResponse(response.getStatusLine.getStatusCode, new String(boStream.toByteArray))
-    } catch {
-      case ex:Exception => ImageResponse(FATAL_CODE, ex.getMessage)
-    }
-
+  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): FaceTag = {
+    val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
+    val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
+    val json = http(requestURL)
+      .headers(headers.toArray: _*)
+      .postString(base64Body)
+      .requestForString
+    parseResponse(json)
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {
@@ -51,6 +34,17 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
     Serialization.write(FaceBody(List(settingMap)))
   }
 
+  private def parseResponse(body: String) = {
+    implicit val formatter = DefaultFormats
+    val json = parse(body)
+    var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
+    jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
+
+    val faceResponse = parse(jsonString).extract[FaceResponse]
+    if (faceResponse.errno == 0) {
+      FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
+    } else throw PhotoTaggingException(faceResponse.errno, s"face response errno [${faceResponse.errno}]")
+  }
 }
 
 object DataPlusFace {
