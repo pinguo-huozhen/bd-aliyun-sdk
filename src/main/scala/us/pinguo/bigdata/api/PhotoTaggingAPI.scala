@@ -18,7 +18,7 @@ import scala.language.postfixOps
 
 class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
 
-  def tagging(imageUrl: String, timeOut: Int = 15000, retryTimes: Int = DEFAULT_RETRY): TaggingResponse = {
+  def tagging(imageUrl: String, timeOut: Int = 15000): TaggingResponse = {
     implicit val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
     implicit val formatter = DefaultFormats
 
