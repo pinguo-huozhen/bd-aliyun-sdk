@@ -5,21 +5,20 @@ import java.io.ByteArrayInputStream
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 
-import org.json4s.{DefaultFormats, _}
 import org.json4s.jackson.JsonMethods._
+import org.json4s.{DefaultFormats, _}
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
-import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature, ExifRetrieve}
+import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature}
 import us.pinguo.bigdata.http
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
 
-  def tagging(imageUrl: String, timeOut: Int = 15000): TaggingResponse = {
-    implicit val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  def tagging(imageUrl: String): Future[TaggingResponse] = {
+    implicit val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(3))
     implicit val formatter = DefaultFormats
 
     val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
@@ -64,7 +63,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
       }
     } yield TaggingResponse(faceTag, itemTag, exifTag, imageCalWH = ImageWH(img.getWidth, img.getHeight), errors.map(x => s"${x._1}=${x._2}").mkString(", "))
 
-    Await.result(response, timeOut millis)
+    response
   }
 
 }
