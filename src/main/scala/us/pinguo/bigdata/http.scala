@@ -11,10 +11,10 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object http {
-  def apply(uri: String, retires: Int = 5, timeout: FiniteDuration = 10 seconds): HttpRequest = new HttpRequest(uri, retires, timeout)
+  def apply(uri: String, retires: Int = 5, timeout: FiniteDuration = 60 seconds): HttpRequest = new HttpRequest(uri, retires, timeout)
 }
 
-class HttpRequest(uri: String, retires: Int = 5, timeout: FiniteDuration = 10 seconds) {
+class HttpRequest(uri: String, retires: Int, timeout: FiniteDuration) {
   private val client = Http.configure { config =>
     config
       .setConnectionTimeoutInMs(timeout.toMillis.toInt)
