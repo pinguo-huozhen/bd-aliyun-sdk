@@ -11,18 +11,25 @@ import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag, PhotoTaggin
 import us.pinguo.bigdata.dataplus.DataPlusFace._
 import us.pinguo.bigdata.http
 
+import scala.concurrent.Future
+
 class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusUtil {
 
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): FaceTag = {
+  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): Future[Either[Throwable, FaceTag]] = {
+    import us.pinguo.bigdata.api.PhotoTaggingAPI.context
     val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
     val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
-    val json = http(requestURL)
+    val result = http(requestURL)
       .headers(headers.toArray: _*)
       .postString(base64Body)
       .requestForString
-    parseResponse(json)
+
+    result.map {
+      case Left(e) => Left(PhotoTaggingException(500, e.getMessage))
+      case Right(json) => Right(parseResponse(json))
+    }
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {
@@ -49,7 +56,9 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
 
 object DataPlusFace {
 
-  val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun" //https://shujuapi.aliyun.com/dataplus_62655/face/face_analysis_aliyun
+  val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun"
+
+  //https://shujuapi.aliyun.com/dataplus_62655/face/face_analysis_aliyun
 
   case class DataSetting(dataType: Int, dataValue: Any)
 

@@ -6,13 +6,15 @@ import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 
 import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.Serialization
 import org.json4s.{DefaultFormats, _}
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
 import us.pinguo.bigdata.dataplus.{DataPlusFace, DataPlusItem, DataPlusSignature}
 import us.pinguo.bigdata.http
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
 class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
@@ -27,44 +29,42 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 
     var errors = Map[String, String]()
 
-    val body = try http(imageUrl).requestForBytes catch {
-      case e: Throwable =>
-        errors += ("download_image" -> e.getMessage)
-        null
+    val imageDownloadFuture = http(imageUrl).requestForBytes.map {
+      case Left(_) => null
+      case Right(bytes: Array[Byte]) => bytes
     }
+    val body = Await.result(imageDownloadFuture, 10 seconds)
 
-    val stream = new ByteArrayInputStream(body)
-    val img: BufferedImage = ImageIO.read(stream)
-
-    val exifUrl: String = if (imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
-
-    val response = for {
-      faceTag <- Future {
-        try if (!errors.contains("download_image")) faceHandler.request(body) else null
-        catch {
-          case e: Throwable => errors += ("face_api" -> e.getMessage)
+    if (body != null) {
+      val exifUrl: String = if (imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
+      val stream = new ByteArrayInputStream(body)
+      val img: BufferedImage = ImageIO.read(stream)
+      for {
+        faceTag <- faceHandler.request(body) map {
+          case Left(e: Throwable) =>
+            errors += ("face_api" -> e.getMessage)
             null
+          case Right(tag) => tag
         }
-      }
-      itemTag <- Future {
-        try if (!errors.contains("download_image")) itemHandler.request(body) else null
-        catch {
-          case e: Throwable =>
+        itemTag <- itemHandler.request(body) map {
+          case Left(e: Throwable) =>
             errors += ("item_api" -> e.getMessage)
             null
+          case Right(tag) => tag
         }
-      }
-      exifTag <- Future {
-        try parse(http(exifUrl).requestForString).extract[ExifTag]
-        catch {
-          case e: Throwable =>
+        exifTag <- http(exifUrl).requestForString map {
+          case Left(e: Throwable) =>
             errors += ("exif_api" -> e.getMessage)
             null
+          case Right(json: String) =>
+            try Serialization.read[ExifTag](json) catch {
+              case e: Exception =>
+                errors += ("exif_api" -> (e.getMessage + " " + json))
+                null
+            }
         }
-      }
-    } yield TaggingResponse(faceTag, itemTag, exifTag, imageCalWH = ImageWH(img.getWidth, img.getHeight), errors.map(x => s"${x._1}=${x._2}").mkString(", "))
-
-    response
+      } yield TaggingResponse(faceTag, itemTag, exifTag, imageCalWH = ImageWH(img.getWidth, img.getHeight), errors.map(x => s"${x._1}=${x._2}").mkString(", "))
+    } else Future(TaggingResponse(null, null, null, null, "image_download->failed"))
   }
 
 }
@@ -87,9 +87,9 @@ object PhotoTaggingAPI {
 
   case class ExifInfo(`val`: String = null, `type`: Int = 0)
 
-  case class ExifTag(YResolution: ExifInfo, ResolutionUnit: ExifInfo, Orientation: ExifInfo,
-                     ColorSpace: ExifInfo, FlashPixVersion: ExifInfo, DateTime: ExifInfo,
-                     ExifVersion: ExifInfo, XResolution: ExifInfo)
+  case class ExifTag(YResolution: Option[ExifInfo], ResolutionUnit: Option[ExifInfo], Orientation: Option[ExifInfo],
+                     ColorSpace: Option[ExifInfo], FlashPixVersion: Option[ExifInfo], DateTime: Option[ExifInfo],
+                     ExifVersion: Option[ExifInfo], XResolution: Option[ExifInfo])
 
   case class ImageWH(width: Int, height: Int)
 

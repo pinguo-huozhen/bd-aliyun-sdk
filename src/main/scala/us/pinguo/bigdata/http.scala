@@ -64,34 +64,32 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
     this
   }
 
-  def request: Response = {
+  def request: Future[Either[Throwable, Response]] = {
     val start = System.currentTimeMillis()
-    var isNeedRetry = false
-    var response: Response = null
-    do {
-      Await.result(client(req).either, timeout) match {
-        case Left(e) =>
-          e.printStackTrace()
-          throw e
-        case Right(r) => r.getStatusCode match {
-          case 200 => response = r
-          case 503 => isNeedRetry = true
-          case other_error => throw HttpStatusCodeError(other_error, r.getResponseBody)
-        }
+    client(req).either map {
+      case Left(e) => Left(e)
+      case Right(response) => response.getStatusCode match {
+        case 200 =>
+          val cost = System.currentTimeMillis() - start
+          println(s"debug -> request [${req.toRequest.getRawUrl}] cost [$cost] ms")
+          Right(response)
+        case other_error => Left(HttpStatusCodeError(other_error, response.getResponseBody))
       }
-    } while (isNeedRetry)
-    val cost = System.currentTimeMillis() - start
-    println(s"debug -> request [${req.toRequest.getRawUrl}] cost [$cost] ms")
-    response
+    }
   }
 
-  def requestForBytes: Array[Byte] = {
-    request.getResponseBodyAsBytes
+  def requestForBytes: Future[Either[Throwable, Array[Byte]]] = {
+    request map {
+      case Left(e) => Left(e)
+      case Right(response) => Right(response.getResponseBodyAsBytes)
+    }
   }
 
-  def requestForString: String = {
-    try request.getResponseBody catch {
-      case HttpStatusCodeError(404, _) => ""
+  def requestForString: Future[Either[Throwable, String]] = {
+    request.map {
+      case Left(e) => Left(e)
+      case Right(response) if response.getResponseBody().nonEmpty => Right(response.getResponseBody)
+      case _ => Right("")
     }
   }
 }
