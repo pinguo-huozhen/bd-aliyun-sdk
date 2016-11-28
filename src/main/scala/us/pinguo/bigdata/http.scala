@@ -14,7 +14,7 @@ object http {
   val client: Http = Http.configure { config =>
     config
       .setConnectionTimeoutInMs(15000)
-      .setRequestTimeoutInMs(10000)
+      .setRequestTimeoutInMs(30000)
       .setUseRawUrl(true)
   }
 
@@ -68,6 +68,7 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
     val start = System.currentTimeMillis()
     var isNeedRetry = false
     var response: Response = null
+    client.configure(_.setRequestTimeoutInMs(timeout.toMillis.toInt))
     do {
       Await.result(client(req).either, timeout) match {
         case Left(e) =>

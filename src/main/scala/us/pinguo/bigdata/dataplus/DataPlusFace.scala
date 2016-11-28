@@ -49,7 +49,7 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
 
 object DataPlusFace {
 
-  val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis"
+  val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun" //https://shujuapi.aliyun.com/dataplus_62655/face/face_analysis_aliyun
 
   case class DataSetting(dataType: Int, dataValue: Any)
 
