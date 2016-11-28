@@ -71,7 +71,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 
 object PhotoTaggingAPI {
 
-  implicit val context: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(128))
+  implicit val context: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(600))
 
   case class Bbox(height: Float, width: Float, xmin: Float, ymin: Float)
 
