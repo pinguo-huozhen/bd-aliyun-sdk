@@ -18,8 +18,8 @@ import scala.language.postfixOps
 class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: String) extends IOUtil with Serializable {
 
   def tagging(imageUrl: String): Future[TaggingResponse] = {
-    implicit val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(3))
     implicit val formatter = DefaultFormats
+    import PhotoTaggingAPI._
 
     val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
     val faceHandler = new DataPlusFace(signature, organize_code)
@@ -35,7 +35,6 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 
     val stream = new ByteArrayInputStream(body)
     val img: BufferedImage = ImageIO.read(stream)
-    stream.close()
 
     val exifUrl: String = if (imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
 
@@ -59,7 +58,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
         try parse(http(exifUrl).requestForString).extract[ExifTag]
         catch {
           case e: Throwable =>
-            errors += ("etag_api" -> e.getMessage)
+            errors += ("exif_api" -> e.getMessage)
             null
         }
       }
@@ -71,6 +70,8 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 }
 
 object PhotoTaggingAPI {
+
+  implicit val context: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(128))
 
   case class Bbox(height: Float, width: Float, xmin: Float, ymin: Float)
 
