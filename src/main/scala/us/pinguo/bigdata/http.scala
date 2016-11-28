@@ -68,7 +68,6 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
     val start = System.currentTimeMillis()
     var isNeedRetry = false
     var response: Response = null
-    client.configure(_.setRequestTimeoutInMs(timeout.toMillis.toInt))
     do {
       Await.result(client(req).either, timeout) match {
         case Left(e) =>
