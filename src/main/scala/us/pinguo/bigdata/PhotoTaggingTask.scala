@@ -38,7 +38,7 @@ class PhotoTaggingTask extends Actor with ActorLogging {
         resultOf(itemActor),
         resultOf(exifActor),
         ImageWH(img.getWidth(), img.getHeight()),
-        Seq(faceActor, itemActor, exifActor).map(resultOf).mkString(", ")
+        Seq(faceActor, itemActor, exifActor).map(errorOf).mkString(", ")
       )
 
       context.stop(self)
