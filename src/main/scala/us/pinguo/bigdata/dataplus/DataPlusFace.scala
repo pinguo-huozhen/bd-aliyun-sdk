@@ -29,12 +29,12 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
         .request
 
       result.map {
-        case Left(e) => FaceError(FATAL_CODE, e.getMessage)
+        case Left(e) => sender() ! FaceError(FATAL_CODE, e.getMessage)
 
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestFace(body))
-          else if (response.getStatusCode == SUCCESS_CODE) parseResponse(response.getResponseBody)
-          else FaceError(response.getStatusCode, response.getResponseBody)
+          else if (response.getStatusCode == SUCCESS_CODE) sender() ! parseResponse(response.getResponseBody)
+          else sender() ! FaceError(response.getStatusCode, response.getResponseBody)
       }
   }
 
