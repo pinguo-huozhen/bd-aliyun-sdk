@@ -1,35 +1,16 @@
 package us.pinguo.bigdata.dataplus
 
-import java.io.ByteArrayOutputStream
-
-import akka.actor.Actor.Receive
-import org.apache.commons.io.IOUtils
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import us.pinguo.bigdata.{DataPlusActor, http}
-import us.pinguo.bigdata.dataplus.DataPlusUtil.ImageResponse
-import us.pinguo.bigdata.dataplus.ExifRetrieve.RequestExif
+import us.pinguo.bigdata.dataplus.ExifRetrieve.{ExifError, RequestExif}
+
+import scala.concurrent.duration._
+import org.json4s.jackson.Serialization._
+import us.pinguo.bigdata.api.PhotoTaggingAPI.ExifTag
 
 
 class ExifRetrieve extends DataPlusActor {
 
-  def request(requestUrl: String, timeOut: Int = DEFAULT_TIMEOUT) = {
-    try {
-      val httpclient: CloseableHttpClient = HttpClients.createDefault()
-      val httpGet: HttpGet = new HttpGet(requestUrl)
-      httpGet.setConfig(requestSetting(timeOut))
-
-      val response = httpclient.execute(httpGet)
-      val boStream: ByteArrayOutputStream = new ByteArrayOutputStream()
-      val inputStream = response.getEntity.getContent
-      IOUtils.copy(inputStream, boStream)
-      inputStream.close()
-      httpclient.close()
-      ImageResponse(response.getStatusLine.getStatusCode, new String(boStream.toByteArray))
-    } catch {
-      case ex: Exception => ImageResponse(FATAL_CODE, ex.getMessage)
-    }
-  }
+  import context._
 
   override def receive: Receive = {
     case RequestExif(requestUrl) =>
@@ -37,8 +18,11 @@ class ExifRetrieve extends DataPlusActor {
         .request
 
       result.map {
-        case Left(e) =>
+        case Left(e) => parent ! ExifError(FATAL_CODE, e.getMessage)
         case Right(response) =>
+          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestExif(requestUrl))
+          else if (response.getStatusCode == SUCCESS_CODE) parent ! read[ExifTag](response.getResponseBody)
+          else parent ! ExifError(response.getStatusCode, response.getResponseBody)
       }
   }
 }

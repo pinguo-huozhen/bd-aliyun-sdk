@@ -4,7 +4,6 @@ import java.util.regex.Pattern
 
 import akka.actor.{ActorRefFactory, Props}
 import org.apache.commons.codec.binary.StringUtils
-import org.apache.http.client.methods.HttpPost
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
@@ -15,26 +14,25 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
-
   import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
   override def receive: Receive = {
     case RequestFace(body) =>
       val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
-      val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
+      val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), "POST")
       val result = http(requestURL)
         .headers(headers.toArray: _*)
         .postString(base64Body)
         .request
 
       result.map {
-        case Left(e) => sender() ! FaceError(FATAL_CODE, e.getMessage)
+        case Left(e) => parent ! FaceError(FATAL_CODE, e.getMessage)
 
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestFace(body))
-          else if (response.getStatusCode == SUCCESS_CODE) sender() ! parseResponse(response.getResponseBody)
-          else sender() ! FaceError(response.getStatusCode, response.getResponseBody)
+          else if (response.getStatusCode == SUCCESS_CODE) parent ! parseResponse(response.getResponseBody)
+          else parent ! FaceError(response.getStatusCode, response.getResponseBody)
       }
   }
 
