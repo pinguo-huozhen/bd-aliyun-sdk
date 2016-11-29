@@ -2,34 +2,40 @@ package us.pinguo.bigdata.dataplus
 
 import java.util.regex.Pattern
 
+import akka.actor.{ActorRefFactory, Props}
 import org.apache.commons.codec.binary.StringUtils
 import org.apache.http.client.methods.HttpPost
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
-import org.json4s.jackson.Serialization
-import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag, PhotoTaggingException}
+import org.json4s.jackson.Serialization._
+import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag}
 import us.pinguo.bigdata.dataplus.DataPlusFace._
-import us.pinguo.bigdata.http
+import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, http}
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-import scala.concurrent.Future
+class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
 
-class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusUtil {
-
+  import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
-  def request(body: Array[Byte], timeOut: Int = DEFAULT_TIMEOUT): Future[Either[Throwable, FaceTag]] = {
-    import us.pinguo.bigdata.api.PhotoTaggingAPI.context
-    val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
-    val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
-    val result = http(requestURL)
-      .headers(headers.toArray: _*)
-      .postString(base64Body)
-      .requestForString
+  override def receive: Receive = {
+    case RequestFace(body) =>
+      val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
+      val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), HttpPost.METHOD_NAME)
+      val result = http(requestURL)
+        .headers(headers.toArray: _*)
+        .postString(base64Body)
+        .request
 
-    result.map {
-      case Left(e) => Left(PhotoTaggingException(500, e.getMessage))
-      case Right(json) => Right(parseResponse(json))
-    }
+      result.map {
+        case Left(e) => FaceError(FATAL_CODE, e.getMessage)
+
+        case Right(response) =>
+          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestFace(body))
+          else if (response.getStatusCode == SUCCESS_CODE) parseResponse(response.getResponseBody)
+          else FaceError(response.getStatusCode, response.getResponseBody)
+      }
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {
@@ -38,7 +44,7 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
       "fea_type" -> DataSetting(10, feaType),
       "landmark_type" -> DataSetting(10, landmarkType),
       "attr_type" -> DataSetting(10, attrType))
-    Serialization.write(FaceBody(List(settingMap)))
+    write(FaceBody(List(settingMap)))
   }
 
   private def parseResponse(body: String) = {
@@ -50,18 +56,25 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
     val faceResponse = parse(jsonString).extract[FaceResponse]
     if (faceResponse.errno == 0) {
       FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-    } else throw PhotoTaggingException(faceResponse.errno, s"face response errno [${faceResponse.errno}]")
+    } else HttpStatusCodeError(FATAL_CODE, jsonString)
   }
+
 }
 
 object DataPlusFace {
 
   val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun"
 
-  //https://shujuapi.aliyun.com/dataplus_62655/face/face_analysis_aliyun
+  def start(signature: DataPlusSignature, organize_code: String)(implicit factory: ActorRefFactory) = {
+    factory.actorOf(Props(new DataPlusFace(signature, organize_code)), "dataplusFace")
+  }
 
   case class DataSetting(dataType: Int, dataValue: Any)
 
   case class FaceBody(inputs: List[Map[String, DataSetting]])
+
+  case class RequestFace(body: Array[Byte])
+
+  case class FaceError(code: Int, message: String)
 
 }

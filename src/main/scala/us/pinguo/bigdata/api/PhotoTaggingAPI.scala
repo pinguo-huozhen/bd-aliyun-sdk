@@ -5,7 +5,6 @@ import java.io.ByteArrayInputStream
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 
-import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
 import org.json4s.{DefaultFormats, _}
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
