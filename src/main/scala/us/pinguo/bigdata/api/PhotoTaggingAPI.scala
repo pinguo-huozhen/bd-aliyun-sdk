@@ -5,8 +5,8 @@ import java.io.ByteArrayInputStream
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 
+import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
-import org.json4s.{DefaultFormats, _}
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
 import us.pinguo.bigdata.dataplus.{DataPlusFaceActor$, DataPlusItemActor$, DataPlusSignature}
@@ -72,23 +72,25 @@ object PhotoTaggingAPI {
 
   implicit val context: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(600))
 
+  trait TaggingResult
+
+  case class ItemTag(annotation: List[Annotation] = Nil, tags: List[Tag] = Nil) extends TaggingResult
+
+  case class FaceTag(age: List[Int] = Nil, gender: List[Int] = Nil, landmark: List[Float] = Nil, number: Int = 0, rect: List[List[Int]] = Nil) extends TaggingResult
+
+  case class ExifTag(YResolution: Option[ExifInfo], ResolutionUnit: Option[ExifInfo], Orientation: Option[ExifInfo],
+                     ColorSpace: Option[ExifInfo], FlashPixVersion: Option[ExifInfo], DateTime: Option[ExifInfo],
+                     ExifVersion: Option[ExifInfo], XResolution: Option[ExifInfo]) extends TaggingResult
+
   case class Bbox(height: Float, width: Float, xmin: Float, ymin: Float)
 
   case class Annotation(`class`: String, score: Float, bbox: Bbox)
 
   case class Tag(confidence: Float, value: String)
 
-  case class ItemTag(annotation: List[Annotation] = Nil, tags: List[Tag] = Nil)
-
   case class FaceResponse(age: List[Int] = Nil, errno: Int = 0, gender: List[Int] = Nil, landmark: List[Float] = Nil, number: Int = 0, rect: List[Int] = Nil)
 
-  case class FaceTag(age: List[Int] = Nil, gender: List[Int] = Nil, landmark: List[Float] = Nil, number: Int = 0, rect: List[List[Int]] = Nil)
-
   case class ExifInfo(`val`: String = null, `type`: Int = 0)
-
-  case class ExifTag(YResolution: Option[ExifInfo], ResolutionUnit: Option[ExifInfo], Orientation: Option[ExifInfo],
-                     ColorSpace: Option[ExifInfo], FlashPixVersion: Option[ExifInfo], DateTime: Option[ExifInfo],
-                     ExifVersion: Option[ExifInfo], XResolution: Option[ExifInfo])
 
   case class ImageWH(width: Int, height: Int)
 
