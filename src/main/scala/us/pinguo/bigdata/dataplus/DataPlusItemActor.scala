@@ -26,7 +26,13 @@ class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) ext
         case Left(e) => parent ! TaggingError(e.getMessage)
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestItem(body))
-          else if (response.getStatusCode == SUCCESS_CODE) parent ! read[ItemTag](response.getResponseBody)
+          else if (response.getStatusCode == SUCCESS_CODE) {
+            try {
+              parent ! read[ItemTag](response.getResponseBody)
+            } catch {
+              case ex: Exception => TaggingError(ex.getMessage)
+            }
+          }
           else parent ! TaggingError(response.getResponseBody)
       }
   }

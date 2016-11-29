@@ -47,15 +47,19 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
   }
 
   private def parseResponse(body: String) = {
-    implicit val formatter = DefaultFormats
-    val json = parse(body)
-    var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
-    jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
+    try {
+      implicit val formatter = DefaultFormats
+      val json = parse(body)
+      var jsonString = compact(render((json \ "outputs") (0) \ "outputValue" \ "dataValue"))
+      jsonString = jsonString.substring(1, jsonString.indexOf("\\n")).replaceAll(Pattern.quote("\\"), "")
 
-    val faceResponse = parse(jsonString).extract[FaceResponse]
-    if (faceResponse.errno == 0) {
-      FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-    } else TaggingError(jsonString)
+      val faceResponse = parse(jsonString).extract[FaceResponse]
+      if (faceResponse.errno == 0) {
+        FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
+      } else TaggingError(jsonString)
+    } catch {
+      case ex: Exception => TaggingError(ex.getMessage)
+    }
   }
 
 }
