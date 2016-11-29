@@ -28,7 +28,7 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
         .request
 
       result.map {
-        case Left(e) => parent ! TaggingError(e.getMessage, e)
+        case Left(e) => parent ! TaggingError(e.getMessage)
 
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))
