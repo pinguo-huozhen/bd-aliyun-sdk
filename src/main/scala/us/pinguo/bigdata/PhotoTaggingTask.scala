@@ -15,6 +15,8 @@ import us.pinguo.bigdata.dataplus._
 
 class PhotoTaggingTask extends Actor with ActorLogging {
 
+  import context.dispatcher
+
   private var receipt: ActorRef = ActorRef.noSender
   private var processingPhotoEtag: String = _
   private var processingPhotoBody: Array[Byte] = _
@@ -72,7 +74,7 @@ class PhotoTaggingTask extends Actor with ActorLogging {
       exifActor ! photo(processingPhotoEtag)
   }
 
-  private def resultOf[T: TaggingResult](key: ActorRef): T = {
+  private def resultOf[T](key: ActorRef): T = {
     results(key) match {
       case Left(_) => null.asInstanceOf[T]
       case Right(tag) => tag.asInstanceOf[T]

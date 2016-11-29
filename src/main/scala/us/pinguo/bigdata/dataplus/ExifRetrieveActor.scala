@@ -8,6 +8,8 @@ import scala.concurrent.duration._
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.DataPlusActor.{ExifTag, TaggingError}
 
+import scala.language.postfixOps
+
 
 class ExifRetrieveActor extends DataPlusActor {
 
