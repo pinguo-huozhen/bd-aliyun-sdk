@@ -2,18 +2,18 @@ package us.pinguo.bigdata.dataplus
 
 import java.util.regex.Pattern
 
-import akka.actor.{ActorRefFactory, Props}
+import akka.actor.Props
 import org.apache.commons.codec.binary.StringUtils
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag}
-import us.pinguo.bigdata.dataplus.DataPlusFace._
+import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
 import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, http}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
+class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
   import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
@@ -59,13 +59,11 @@ class DataPlusFace(signature: DataPlusSignature, organize_code: String) extends 
 
 }
 
-object DataPlusFace {
+object DataPlusFaceActor {
 
   val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun"
 
-  def start(signature: DataPlusSignature, organize_code: String)(implicit factory: ActorRefFactory) = {
-    factory.actorOf(Props(new DataPlusFace(signature, organize_code)), "dataplusFace")
-  }
+  def props(signature: DataPlusSignature, organize_code: String) = Props(new DataPlusFaceActor(signature, organize_code))
 
   case class DataSetting(dataType: Int, dataValue: Any)
 
