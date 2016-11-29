@@ -1,6 +1,7 @@
 package us.pinguo.bigdata.dataplus
 
 import akka.actor.Props
+import org.json4s.DefaultFormats
 import us.pinguo.bigdata.{DataPlusActor, http}
 import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 
@@ -14,6 +15,8 @@ import scala.language.postfixOps
 class ExifRetrieveActor extends DataPlusActor {
 
   import context._
+
+  implicit val formatter = DefaultFormats
 
   override def receive: Receive = {
     case RequestExif(requestUrl) =>
