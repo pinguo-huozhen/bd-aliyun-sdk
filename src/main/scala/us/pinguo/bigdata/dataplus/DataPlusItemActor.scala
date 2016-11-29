@@ -1,13 +1,15 @@
 package us.pinguo.bigdata.dataplus
 
+import akka.actor.Props
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.api.PhotoTaggingAPI.ItemTag
-import us.pinguo.bigdata.dataplus.DataPlusItem._
+import us.pinguo.bigdata.dataplus.DataPlusItemActor._
 import us.pinguo.bigdata.{DataPlusActor, http}
+
 import scala.concurrent.duration._
 
-class DataPlusItem(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
+class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
   import context._
   private val requestURL = PATTERN_ITEM_URL.format(organize_code)
 
@@ -30,12 +32,14 @@ class DataPlusItem(signature: DataPlusSignature, organize_code: String) extends 
   }
 }
 
-object DataPlusItem {
+object DataPlusItemActor {
 
   val PATTERN_ITEM_URL = "https://shujuapi.aliyun.com/%s/face/imgupload/upload?x-oss-process=udf/visual/detect"
 
   case class RequestItem(body: Array[Byte])
 
-  case class ItemError(code: Int, messge: String)
+  case class ItemError(code: Int, message: String)
+
+  def props(signature: DataPlusSignature, organize_code: String) = Props(new DataPlusItemActor(signature, organize_code))
 
 }

@@ -9,7 +9,7 @@ import org.json4s.jackson.Serialization
 import org.json4s.{DefaultFormats, _}
 import us.pinguo.bigdata.api.PhotoTaggingAPI._
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
-import us.pinguo.bigdata.dataplus.{DataPlusFaceActor$, DataPlusItem, DataPlusSignature}
+import us.pinguo.bigdata.dataplus.{DataPlusFaceActor$, DataPlusItemActor$, DataPlusSignature}
 import us.pinguo.bigdata.http
 
 import scala.concurrent.duration._
@@ -24,7 +24,7 @@ class PhotoTaggingAPI(access_id: String, access_secret: String, organize_code: S
 
     val signature = new DataPlusSignature(DataPlusKeys(access_id, access_secret))
     val faceHandler = new DataPlusFaceActor(signature, organize_code)
-    val itemHandler = new DataPlusItem(signature, organize_code)
+    val itemHandler = new DataPlusItemActor(signature, organize_code)
 
     var errors = Map[String, String]()
 

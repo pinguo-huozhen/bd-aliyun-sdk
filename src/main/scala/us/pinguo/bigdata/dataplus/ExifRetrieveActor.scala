@@ -1,14 +1,15 @@
 package us.pinguo.bigdata.dataplus
 
+import akka.actor.Props
 import us.pinguo.bigdata.{DataPlusActor, http}
-import us.pinguo.bigdata.dataplus.ExifRetrieve.{ExifError, RequestExif}
+import us.pinguo.bigdata.dataplus.ExifRetrieveActor.{ExifError, RequestExif}
 
 import scala.concurrent.duration._
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.api.PhotoTaggingAPI.ExifTag
 
 
-class ExifRetrieve extends DataPlusActor {
+class ExifRetrieveActor extends DataPlusActor {
 
   import context._
 
@@ -27,10 +28,12 @@ class ExifRetrieve extends DataPlusActor {
   }
 }
 
-object ExifRetrieve {
+object ExifRetrieveActor {
 
   case class RequestExif(requestUrl: String)
 
   case class ExifError(code: Int, message: String)
+
+  def props() = Props(new ExifRetrieveActor)
 
 }
