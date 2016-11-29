@@ -7,7 +7,7 @@ import org.apache.commons.codec.binary.StringUtils
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
-import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag}
+import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag, TaggingError}
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
 import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, http}
 
@@ -28,12 +28,12 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
         .request
 
       result.map {
-        case Left(e) => parent ! FaceError(FATAL_CODE, e.getMessage)
+        case Left(e) => parent ! TaggingError(e.getMessage)
 
         case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestFace(body))
+          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))
           else if (response.getStatusCode == SUCCESS_CODE) parent ! parseResponse(response.getResponseBody)
-          else parent ! FaceError(response.getStatusCode, response.getResponseBody)
+          else parent ! TaggingError(response.getResponseBody)
       }
   }
 
@@ -55,7 +55,7 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
     val faceResponse = parse(jsonString).extract[FaceResponse]
     if (faceResponse.errno == 0) {
       FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-    } else HttpStatusCodeError(FATAL_CODE, jsonString)
+    } else TaggingError(jsonString)
   }
 
 }
@@ -71,7 +71,5 @@ object DataPlusFaceActor {
   case class FaceBody(inputs: List[Map[String, DataSetting]])
 
   case class RequestFace(body: Array[Byte])
-
-  case class FaceError(code: Int, message: String)
 
 }

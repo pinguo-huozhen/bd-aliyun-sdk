@@ -3,7 +3,7 @@ package us.pinguo.bigdata.dataplus
 import akka.actor.Props
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization._
-import us.pinguo.bigdata.DataPlusActor.ItemTag
+import us.pinguo.bigdata.DataPlusActor.{ItemTag, TaggingError}
 import us.pinguo.bigdata.dataplus.DataPlusItemActor._
 import us.pinguo.bigdata.{DataPlusActor, http}
 
@@ -23,11 +23,11 @@ class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) ext
         .request
 
       result.map {
-        case Left(e) => parent ! ItemError(FATAL_CODE, e.getMessage)
+        case Left(e) => parent ! TaggingError(e.getMessage)
         case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(500 millis, self, RequestItem(body))
+          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestItem(body))
           else if (response.getStatusCode == SUCCESS_CODE) parent ! read[ItemTag](response.getResponseBody)
-          else parent ! ItemError(response.getStatusCode, response.getResponseBody)
+          else parent ! TaggingError(response.getResponseBody)
       }
   }
 }
@@ -37,8 +37,6 @@ object DataPlusItemActor {
   val PATTERN_ITEM_URL = "https://shujuapi.aliyun.com/%s/face/imgupload/upload?x-oss-process=udf/visual/detect"
 
   case class RequestItem(body: Array[Byte])
-
-  case class ItemError(code: Int, message: String)
 
   def props(signature: DataPlusSignature, organize_code: String) = Props(new DataPlusItemActor(signature, organize_code))
 

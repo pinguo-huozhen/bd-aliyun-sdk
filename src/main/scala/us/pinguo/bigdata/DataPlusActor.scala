@@ -15,6 +15,8 @@ abstract class DataPlusActor extends Actor {
 
   val FATAL_CODE = 400
 
+  val DEFAULT_MILLS = 500
+
 }
 
 object DataPlusActor {
@@ -48,5 +50,7 @@ object DataPlusActor {
   case class PhotoTaggingException(code: Int, msg: String) extends Exception {
     override def getMessage: String = s"$code - $msg"
   }
+
+  case class TaggingError(message: String)
 
 }
