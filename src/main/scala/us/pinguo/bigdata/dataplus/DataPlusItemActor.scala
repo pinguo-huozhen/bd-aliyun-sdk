@@ -3,7 +3,7 @@ package us.pinguo.bigdata.dataplus
 import akka.actor.Props
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization._
-import us.pinguo.bigdata.api.PhotoTaggingAPI.ItemTag
+import us.pinguo.bigdata.DataPlusActor.ItemTag
 import us.pinguo.bigdata.dataplus.DataPlusItemActor._
 import us.pinguo.bigdata.{DataPlusActor, http}
 

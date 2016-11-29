@@ -6,7 +6,7 @@ import us.pinguo.bigdata.dataplus.ExifRetrieveActor.{ExifError, RequestExif}
 
 import scala.concurrent.duration._
 import org.json4s.jackson.Serialization._
-import us.pinguo.bigdata.api.PhotoTaggingAPI.ExifTag
+import us.pinguo.bigdata.DataPlusActor.ExifTag
 
 
 class ExifRetrieveActor extends DataPlusActor {
