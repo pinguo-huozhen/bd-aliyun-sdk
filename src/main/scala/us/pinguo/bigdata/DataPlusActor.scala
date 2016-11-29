@@ -53,4 +53,9 @@ object DataPlusActor {
 
   case class TaggingError(message: String)
 
+  //  case class TaggingError(message: String, exception: Throwable)
+  //
+  //  case class TagRequestException(message: String) extends Exception
+  //
+
 }

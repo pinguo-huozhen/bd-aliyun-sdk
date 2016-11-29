@@ -9,7 +9,7 @@ import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag, TaggingError}
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
-import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, http}
+import us.pinguo.bigdata.{DataPlusActor, http}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -28,7 +28,7 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
         .request
 
       result.map {
-        case Left(e) => parent ! TaggingError(e.getMessage)
+        case Left(e) => parent ! TaggingError(e.getMessage, e)
 
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))

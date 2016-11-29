@@ -2,7 +2,7 @@ package us.pinguo.bigdata.dataplus
 
 import akka.actor.Props
 import us.pinguo.bigdata.{DataPlusActor, http}
-import us.pinguo.bigdata.dataplus.ExifRetrieveActor.{ExifError, RequestExif}
+import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 
 import scala.concurrent.duration._
 import org.json4s.jackson.Serialization._
@@ -19,7 +19,7 @@ class ExifRetrieveActor extends DataPlusActor {
         .request
 
       result.map {
-        case Left(e) => parent ! ExifError(FATAL_CODE, e.getMessage)
+        case Left(e) => parent ! TaggingError(e.getMessage, Throwable)
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestExif(requestUrl))
           else if (response.getStatusCode == SUCCESS_CODE) parent ! read[ExifTag](response.getResponseBody)
