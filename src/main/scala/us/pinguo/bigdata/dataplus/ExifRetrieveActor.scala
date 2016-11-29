@@ -34,6 +34,6 @@ object ExifRetrieveActor {
 
   case class ExifError(code: Int, message: String)
 
-  def props() = Props(new ExifRetrieveActor)
+  def props() = Props(new ExifRetrieveActor())
 
 }

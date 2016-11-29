@@ -15,10 +15,6 @@ abstract class DataPlusActor extends Actor {
 
   val FATAL_CODE = 400
 
-  val DEFAULT_TIMEOUT = 5000
-
-  val DEFAULT_RETRY = 3
-
 }
 
 object DataPlusActor {

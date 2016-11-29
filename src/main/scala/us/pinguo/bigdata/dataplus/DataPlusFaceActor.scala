@@ -7,9 +7,10 @@ import org.apache.commons.codec.binary.StringUtils
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
-import us.pinguo.bigdata.api.PhotoTaggingAPI.{FaceResponse, FaceTag}
+import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag}
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
 import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, http}
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
