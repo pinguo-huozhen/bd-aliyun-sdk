@@ -19,10 +19,16 @@ class ExifRetrieveActor extends DataPlusActor {
         .request
 
       result.map {
-        case Left(e) => parent ! TaggingError(e.getMessage, Throwable)
+        case Left(e) => parent ! TaggingError(e.getMessage)
         case Right(response) =>
           if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestExif(requestUrl))
-          else if (response.getStatusCode == SUCCESS_CODE) parent ! read[ExifTag](response.getResponseBody)
+          else if (response.getStatusCode == SUCCESS_CODE) {
+            try {
+              parent ! read[ExifTag](response.getResponseBody)
+            } catch {
+              case ex: Exception => TaggingError(ex.getMessage)
+            }
+          }
           else parent ! TaggingError(response.getResponseBody)
       }
   }
