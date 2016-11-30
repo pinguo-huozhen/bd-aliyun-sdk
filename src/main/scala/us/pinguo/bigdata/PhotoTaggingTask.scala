@@ -9,7 +9,10 @@ import akka.pattern._
 import com.ning.http.client.Response
 import us.pinguo.bigdata.DataPlusActor.{ExifTag, FaceTag, ImageWH, ItemTag, TaggingError, TaggingResponse, TaggingResult}
 import us.pinguo.bigdata.PhotoTaggingTask._
+import us.pinguo.bigdata.dataplus.DataPlusFaceActor.RequestFace
+import us.pinguo.bigdata.dataplus.DataPlusItemActor.RequestItem
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
+import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 import us.pinguo.bigdata.dataplus._
 
 
@@ -28,13 +31,11 @@ class PhotoTaggingTask extends Actor with ActorLogging {
 
   private var results = Map[ActorRef, Either[String, TaggingResult]]()
 
-
   override def aroundReceive(receive: Receive, msg: Any): Unit = {
     super.aroundReceive(receive, msg)
     if (results.size == 3) {
       val stream = new ByteArrayInputStream(processingPhotoBody)
       val img: BufferedImage = ImageIO.read(stream)
-
       receipt ! TaggingResponse(
         resultOf(faceActor),
         resultOf(itemActor),
@@ -69,9 +70,9 @@ class PhotoTaggingTask extends Actor with ActorLogging {
     case Right(response: Response) if response.getStatusCode == 200 =>
       processingPhotoBody = response.getResponseBodyAsBytes
 
-      faceActor ! processingPhotoBody
-      itemActor ! processingPhotoBody
-      exifActor ! photo(processingPhotoEtag)
+      faceActor ! RequestFace(processingPhotoBody)
+      itemActor ! RequestItem(processingPhotoBody)
+      exifActor ! RequestExif(photo(processingPhotoEtag))
   }
 
   private def resultOf[T](key: ActorRef): T = {

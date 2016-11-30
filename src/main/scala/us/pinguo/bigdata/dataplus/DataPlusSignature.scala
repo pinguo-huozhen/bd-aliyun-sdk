@@ -23,6 +23,8 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
 
   def base64Encode(bytes: Array[Byte]): String = Base64.getEncoder.encodeToString(bytes)
 
+  def md5(bytes: Array[Byte]): String = DigestUtils.md5Hex(bytes)
+
   private def sign(requestUrl: String, body: Array[Byte], method: String, accept: String, contentType: String, gmtTime: String) = {
     val md5Body = base64Encode(DigestUtils.md5(body))
     val urlStr = urlPath(requestUrl)

@@ -11,11 +11,11 @@ import scala.concurrent.duration._
 
 class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
   import context._
-  private val requestURL = PATTERN_ITEM_URL.format(organize_code)
 
   override def receive: Receive = {
     case RequestItem(body) =>
       implicit val formatter = DefaultFormats
+      val requestURL = PATTERN_ITEM_URL.format(organize_code, signature.md5(body))
       val headers = signature.header(requestURL, body, "PUT", "*/*", "*/*")
       val result = http(requestURL)
         .headers(headers.toArray: _*)
@@ -40,7 +40,7 @@ class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) ext
 
 object DataPlusItemActor {
 
-  val PATTERN_ITEM_URL = "https://shujuapi.aliyun.com/%s/face/imgupload/upload?x-oss-process=udf/visual/detect"
+  val PATTERN_ITEM_URL = "https://shujuapi.aliyun.com/%s/face/imgupload/%s?x-oss-process=udf/visual/detect"
 
   case class RequestItem(body: Array[Byte])
 

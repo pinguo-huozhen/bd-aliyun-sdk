@@ -19,7 +19,8 @@ class ExifRetrieveActor extends DataPlusActor {
   implicit val formatter = DefaultFormats
 
   override def receive: Receive = {
-    case RequestExif(requestUrl) =>
+    case RequestExif(imageUrl) =>
+      val requestUrl = if(imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
       val result = http(requestUrl)
         .request
 
