@@ -16,6 +16,7 @@ import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 import us.pinguo.bigdata.dataplus._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 
 class PhotoTaggingTask extends Actor with ActorLogging {
@@ -27,12 +28,14 @@ class PhotoTaggingTask extends Actor with ActorLogging {
   private var processingPhotoBody: Array[Byte] = _
 
   private val signature = new DataPlusSignature(DataPlusKeys(accessID, accessKey))
-  private val faceActor = context.actorOf(DataPlusFaceActor.props(signature, organizationCode))
-  private val itemActor = context.actorOf(DataPlusItemActor.props(signature, organizationCode))
+  private val faceActor = context.actorOf(DataPlusFaceActor.props(signature, organizationCode).withDispatcher("face-api-dispatcher"))
+  private val itemActor = context.actorOf(DataPlusItemActor.props(signature, organizationCode).withDispatcher("item-api-dispatcher"))
   private val exifActor = context.actorOf(ExifRetrieveActor.props())
   private val terminate = context.system.scheduler.scheduleOnce(20 seconds, self, PoisonPill)
 
   private var results = Map[ActorRef, Either[String, TaggingResult]]()
+
+  private val taskStarted = System.currentTimeMillis()
 
   override def aroundReceive(receive: Receive, msg: Any): Unit = {
     super.aroundReceive(receive, msg)
@@ -48,8 +51,12 @@ class PhotoTaggingTask extends Actor with ActorLogging {
       )
 
       context.stop(self)
+      terminate.cancel()
     }
   }
+
+
+  override def postStop(): Unit = log.info(s"task ${self.path.toStringWithoutAddress} completed in [${System.currentTimeMillis() - taskStarted}] ms")
 
   override def receive: Receive = processDownload.orElse {
     case exifTag: ExifTag => results += (sender() -> Right(exifTag))

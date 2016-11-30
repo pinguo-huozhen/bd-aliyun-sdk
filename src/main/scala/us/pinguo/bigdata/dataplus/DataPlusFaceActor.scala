@@ -18,6 +18,9 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
   import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
 
+
+  override def preStart(): Unit = log.info("face_api started")
+
   override def receive: Receive = {
     case RequestFace(body) =>
       val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))

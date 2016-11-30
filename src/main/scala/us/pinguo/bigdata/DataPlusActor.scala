@@ -2,12 +2,12 @@ package us.pinguo.bigdata
 
 import java.util.concurrent.Executors
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 
 import scala.concurrent.ExecutionContext
 
 
-abstract class DataPlusActor extends Actor {
+abstract class DataPlusActor extends Actor with ActorLogging {
 
   val SUCCESS_CODE = 200
 
