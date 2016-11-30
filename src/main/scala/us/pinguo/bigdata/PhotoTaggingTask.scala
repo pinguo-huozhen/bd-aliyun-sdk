@@ -4,7 +4,7 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill}
 import akka.pattern._
 import com.ning.http.client.Response
 import us.pinguo.bigdata.DataPlusActor.{ExifTag, FaceTag, ImageWH, ItemTag, TaggingError, TaggingResponse, TaggingResult}
@@ -14,6 +14,8 @@ import us.pinguo.bigdata.dataplus.DataPlusItemActor.RequestItem
 import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
 import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 import us.pinguo.bigdata.dataplus._
+
+import scala.concurrent.duration._
 
 
 class PhotoTaggingTask extends Actor with ActorLogging {
@@ -28,6 +30,7 @@ class PhotoTaggingTask extends Actor with ActorLogging {
   private val faceActor = context.actorOf(DataPlusFaceActor.props(signature, organizationCode))
   private val itemActor = context.actorOf(DataPlusItemActor.props(signature, organizationCode))
   private val exifActor = context.actorOf(ExifRetrieveActor.props())
+  private val terminate = context.system.scheduler.scheduleOnce(20 seconds, self, PoisonPill)
 
   private var results = Map[ActorRef, Either[String, TaggingResult]]()
 
