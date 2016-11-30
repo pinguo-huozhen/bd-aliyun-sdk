@@ -62,7 +62,9 @@ class PhotoTaggingTask extends Actor with ActorLogging {
     case exifTag: ExifTag => results += (sender() -> Right(exifTag))
     case faceTag: FaceTag => results += (sender() -> Right(faceTag))
     case itemTag: ItemTag => results += (sender() -> Right(itemTag))
-    case TaggingError(message) => results += (sender() -> Left(message))
+    case TaggingError(message) =>
+      log.warning(s"meet tagging error:[$message]")
+      results += (sender() -> Left(message))
   }
 
   private def processDownload: Receive = {
