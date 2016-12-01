@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 
-class PhotoTaggingTask extends Actor with ActorLogging {
+class PhotoTaggingTask() extends Actor with ActorLogging {
 
   import context.dispatcher
 
@@ -51,12 +51,14 @@ class PhotoTaggingTask extends Actor with ActorLogging {
       )
 
       context.stop(self)
-      terminate.cancel()
     }
   }
 
 
-  override def postStop(): Unit = log.info(s"task ${self.path.toStringWithoutAddress} completed in [${System.currentTimeMillis() - taskStarted}] ms")
+  override def postStop(): Unit = {
+    log.info(s"task ${self.path.toStringWithoutAddress} completed in [${System.currentTimeMillis() - taskStarted}] ms")
+    terminate.cancel()
+  }
 
   override def receive: Receive = processDownload.orElse {
     case exifTag: ExifTag => results += (sender() -> Right(exifTag))

@@ -65,14 +65,11 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
   }
 
   def request: Future[Either[Throwable, Response]] = {
-    val start = System.currentTimeMillis()
     client(req).either map {
       case Left(e) => Left(e)
       case Right(response) => response.getStatusCode match {
-        case 200 =>
-          val cost = System.currentTimeMillis() - start
-          println(s"debug -> request [${req.toRequest.getRawUrl}] cost [$cost] ms")
-          Right(response)
+        case 200 => Right(response)
+        case 503 => Right(response)
         case other_error => Left(HttpStatusCodeError(other_error, response.getResponseBody))
       }
     }
@@ -95,5 +92,6 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
 }
 
 case class HttpStatusCodeError(code: Int, body: String) extends RuntimeException {
+  def getCode: Int = code
   override def getMessage: String = s"http status code error [$code], body:$body"
 }

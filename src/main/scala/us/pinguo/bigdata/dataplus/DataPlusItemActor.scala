@@ -4,13 +4,15 @@ import akka.actor.Props
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.DataPlusActor.{ItemTag, TaggingError}
+import us.pinguo.bigdata.PhotoStatisticActor.Report
 import us.pinguo.bigdata.dataplus.DataPlusItemActor._
-import us.pinguo.bigdata.{DataPlusActor, http}
+import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, PhotoStatisticActor, http}
 
 import scala.concurrent.duration._
 
 class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
   import context._
+  val report = context.actorSelection("/user/report")
 
   override def receive: Receive = {
     case RequestItem(body) =>
@@ -22,18 +24,25 @@ class DataPlusItemActor(signature: DataPlusSignature, organize_code: String) ext
         .putByte(body)
         .request
 
+      report ! Report("dp-item", PhotoStatisticActor.REQUEST)
       result.map {
-        case Left(e) => parent ! TaggingError(e.getMessage)
+        case Left(e:HttpStatusCodeError) =>
+          parent ! TaggingError(s"DataPlusItemActor-> http error:[${e.getMessage}]")
+          report ! Report("dp-item", e.getCode.toString)
+
         case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestItem(body))
+          if (response.getStatusCode == SERVER_BUSY) {
+            context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestItem(body))
+            report ! Report("dp-item", PhotoStatisticActor.RETRY)
+          }
           else if (response.getStatusCode == SUCCESS_CODE) {
             try {
               parent ! read[ItemTag](response.getResponseBody)
             } catch {
-              case ex: Exception => TaggingError(ex.getMessage)
+              case ex: Exception => TaggingError(s"DataPlusItemActor-> parse error:[${ex.getMessage}]")
             }
           }
-          else parent ! TaggingError(response.getResponseBody)
+          else parent ! TaggingError(s"DataPlusItemActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
       }
   }
 }

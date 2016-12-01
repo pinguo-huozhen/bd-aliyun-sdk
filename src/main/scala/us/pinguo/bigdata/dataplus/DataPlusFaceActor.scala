@@ -8,8 +8,9 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 import org.json4s.jackson.Serialization._
 import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag, TaggingError}
+import us.pinguo.bigdata.PhotoStatisticActor.Report
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
-import us.pinguo.bigdata.{DataPlusActor, http}
+import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, PhotoStatisticActor, http}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -17,9 +18,7 @@ import scala.language.postfixOps
 class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) extends DataPlusActor {
   import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
-
-
-  override def preStart(): Unit = log.info("face_api started")
+  val report = context.actorSelection("/user/report")
 
   override def receive: Receive = {
     case RequestFace(body) =>
@@ -29,14 +28,19 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
         .headers(headers.toArray: _*)
         .postString(base64Body)
         .request
-
+      report ! Report("dp-face", PhotoStatisticActor.REQUEST)
       result.map {
-        case Left(e) => parent ! TaggingError(e.getMessage)
+        case Left(e:HttpStatusCodeError) =>
+          report ! Report("dp-face", e.getCode.toString)
+          parent ! TaggingError(s"DataPlusFaceActor-> http error:[${e.getMessage}]")
 
         case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))
+          if (response.getStatusCode == SERVER_BUSY) {
+            context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))
+            report ! Report("dp-face", PhotoStatisticActor.RETRY)
+          }
           else if (response.getStatusCode == SUCCESS_CODE) parent ! parseResponse(response.getResponseBody)
-          else parent ! TaggingError(response.getResponseBody)
+          else parent ! TaggingError(s"DataPlusFaceActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
       }
   }
 
@@ -59,9 +63,9 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
       val faceResponse = parse(jsonString).extract[FaceResponse]
       if (faceResponse.errno == 0) {
         FaceTag(faceResponse.age, faceResponse.gender, faceResponse.landmark, faceResponse.number, faceResponse.rect.sliding(4, 4).toList)
-      } else TaggingError(jsonString)
+      } else TaggingError(s"DataPlusFaceActor-> error:[${faceResponse.errno} body:[${jsonString.replaceAll("\n","")}]")
     } catch {
-      case ex: Exception => TaggingError(ex.getMessage)
+      case ex: Exception => TaggingError(s"DataPlusFaceActor-> parse error:[${ex.getMessage}]")
     }
   }
 
@@ -70,6 +74,8 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
 object DataPlusFaceActor {
 
   val PATTERN_FACE_URL = "https://shujuapi.aliyun.com/%s/face/face_analysis_aliyun"
+
+
 
   def props(signature: DataPlusSignature, organize_code: String) = Props(new DataPlusFaceActor(signature, organize_code))
 
