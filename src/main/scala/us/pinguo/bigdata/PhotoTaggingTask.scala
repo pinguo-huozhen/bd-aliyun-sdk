@@ -126,13 +126,13 @@ object PhotoTaggingTask {
       implicit val format = DefaultFormats
       try {
         val json = http(proxyUrlTemplate.format(etag)).requestForString map {
-          case Left(e) => Serialization.write(Map("error_message" -> s"request_error -> ${e.getClass.getCanonicalName}"))
+          case Left(e) => Serialization.write(Map("error_message" -> s"HttpError -> ${e.getClass.getCanonicalName}"))
           case Right(s: String) => s
         }
         Serialization.read[TaggingResponse](Await.result(json, timeout))
       } catch {
         case e: Exception =>
-          TaggingResponse(error_message = s"request_error -> ${e.getClass.getCanonicalName} - ${e.getMessage}")
+          TaggingResponse(error_message = s"HttpError -> ${e.getClass.getCanonicalName} - ${e.getMessage}")
       }
     }
   }
