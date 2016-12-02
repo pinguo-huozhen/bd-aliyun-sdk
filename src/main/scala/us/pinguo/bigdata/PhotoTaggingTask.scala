@@ -7,6 +7,8 @@ import javax.imageio.ImageIO
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill}
 import akka.pattern._
 import com.ning.http.client.Response
+import org.json4s.DefaultFormats
+import org.json4s.jackson.Serialization
 import us.pinguo.bigdata.DataPlusActor.{ExifTag, FaceTag, ImageWH, ItemTag, TaggingError, TaggingResponse, TaggingResult}
 import us.pinguo.bigdata.PhotoTaggingTask._
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor.RequestFace
@@ -15,11 +17,12 @@ import us.pinguo.bigdata.dataplus.DataPlusSignature.DataPlusKeys
 import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
 import us.pinguo.bigdata.dataplus._
 
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 
-class PhotoTaggingTask() extends Actor with ActorLogging {
+class PhotoTaggingTask extends Actor with ActorLogging {
 
   import context.dispatcher
 
@@ -117,5 +120,21 @@ object PhotoTaggingTask {
   var organizationCode: String = _
 
   case class TaggingPhoto(etag: String)
+
+  implicit class TaggingProxy(proxyUrlTemplate: String) {
+    def tagging(etag: String, timeout: FiniteDuration = 30 seconds)(implicit execution: ExecutionContext): TaggingResponse = {
+      implicit val format = DefaultFormats
+      try {
+        val json = http(proxyUrlTemplate.format(etag)).requestForString map {
+          case Left(e) => Serialization.write(Map("error_message" -> e))
+          case Right(s: String) => s
+        }
+        Serialization.read[TaggingResponse](Await.result(json, timeout))
+      } catch {
+        case e: Exception =>
+          TaggingResponse(error_message = s"request_error -> ${e.getClass.getCanonicalName} - ${e.getMessage}")
+      }
+    }
+  }
 
 }
