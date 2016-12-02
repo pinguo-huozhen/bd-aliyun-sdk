@@ -66,7 +66,7 @@ class PhotoTaggingTask() extends Actor with ActorLogging {
     case faceTag: FaceTag => results += (sender() -> Right(faceTag))
     case itemTag: ItemTag => results += (sender() -> Right(itemTag))
     case TaggingError(message) =>
-      log.warning(s"meet tagging error:[$message]")
+      log.warning(s"meet tagging error:[$message] etag:[$cachedEtag] ")
       results += (sender() -> Left(message))
   }
 
