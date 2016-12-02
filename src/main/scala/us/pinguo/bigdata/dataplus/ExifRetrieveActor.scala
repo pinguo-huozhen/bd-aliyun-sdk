@@ -4,6 +4,8 @@ import akka.actor.Props
 import org.json4s.DefaultFormats
 import us.pinguo.bigdata.{DataPlusActor, http}
 import us.pinguo.bigdata.dataplus.ExifRetrieveActor.RequestExif
+import akka.pattern._
+import com.ning.http.client.Response
 
 import scala.concurrent.duration._
 import org.json4s.jackson.Serialization._
@@ -17,26 +19,29 @@ class ExifRetrieveActor extends DataPlusActor {
   import context._
 
   implicit val formatter = DefaultFormats
+  private var processingUrl: String = _
 
   override def receive: Receive = {
     case RequestExif(imageUrl) =>
+      processingUrl = imageUrl
       val requestUrl = if(imageUrl.contains("?")) s"$imageUrl&exif" else s"$imageUrl?exif"
-      val result = http(requestUrl)
-        .request
+      pipe(http(requestUrl).request) to self
 
-      result.map {
-        case Left(e) => parent ! TaggingError(s"ExifRetrieveActor-> http error:[${e.getMessage}]")
-        case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestExif(requestUrl))
-          else if (response.getStatusCode == SUCCESS_CODE) {
-            try {
-              parent ! read[ExifTag](response.getResponseBody)
-            } catch {
-              case ex: Exception => TaggingError(s"ExifRetrieveActor-> parse error:[${ex.getMessage}]")
-            }
+    case Left(e: Exception) => parent ! TaggingError(s"ExifRetrieveActor-> http error:[${e.getMessage}]")
+
+    case Right(response: Response) =>
+      response.getStatusCode match {
+        case SERVER_BUSY => context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestExif(processingUrl))
+
+        case SUCCESS_CODE =>
+          try parent ! read[ExifTag](response.getResponseBody) catch {
+            case ex: Exception => TaggingError(s"ExifRetrieveActor-> parse error:[${ex.getMessage}]")
           }
-          else parent ! TaggingError(s"ExifRetrieveActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
+
+        case _ =>
+          parent ! TaggingError(s"ExifRetrieveActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
       }
+
   }
 }
 

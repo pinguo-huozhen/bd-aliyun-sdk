@@ -11,6 +11,8 @@ import us.pinguo.bigdata.DataPlusActor.{FaceResponse, FaceTag, TaggingError}
 import us.pinguo.bigdata.PhotoStatisticActor.Report
 import us.pinguo.bigdata.dataplus.DataPlusFaceActor._
 import us.pinguo.bigdata.{DataPlusActor, HttpStatusCodeError, PhotoStatisticActor, http}
+import akka.pattern._
+import com.ning.http.client.Response
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -19,29 +21,35 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
   import context._
   private val requestURL = PATTERN_FACE_URL.format(organize_code)
   val report = context.actorSelection("/user/report")
+  private var processingBody:Array[Byte] = _
 
   override def receive: Receive = {
     case RequestFace(body) =>
-      val base64Body = constructBody(0, 0, 1, signature.base64Encode(body))
+      processingBody = body
+      val base64Body = constructBody(0, 0, 1, signature.base64Encode(processingBody))
       val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), "POST")
-      val result = http(requestURL)
+      pipe(http(requestURL)
         .headers(headers.toArray: _*)
         .postString(base64Body)
-        .request
-      report ! Report("dp-face", PhotoStatisticActor.REQUEST)
-      result.map {
-        case Left(e:HttpStatusCodeError) =>
-          report ! Report("dp-face", e.getCode.toString)
-          parent ! TaggingError(s"DataPlusFaceActor-> http error:[${e.getMessage}]")
+        .request) to self
 
-        case Right(response) =>
-          if (response.getStatusCode == SERVER_BUSY) {
-            context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(body))
-            report ! Report("dp-face", PhotoStatisticActor.RETRY)
-          }
-          else if (response.getStatusCode == SUCCESS_CODE) parent ! parseResponse(response.getResponseBody)
-          else parent ! TaggingError(s"DataPlusFaceActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
+      report ! Report("dp-face", PhotoStatisticActor.REQUEST)
+
+    case Left(e:HttpStatusCodeError) =>
+      report ! Report("dp-face", e.getCode.toString)
+      parent ! TaggingError(s"DataPlusFaceActor-> http error:[${e.getMessage}]")
+
+    case Right(response: Response) =>
+      response.getStatusCode match {
+        case SERVER_BUSY =>
+          context.system.scheduler.scheduleOnce(DEFAULT_MILLS millis, self, RequestFace(processingBody))
+          report ! Report("dp-face", PhotoStatisticActor.RETRY)
+
+        case SUCCESS_CODE => parent ! parseResponse(response.getResponseBody)
+
+        case _ => parent ! TaggingError(s"DataPlusFaceActor->code:[${response.getStatusCode}] body[${response.getResponseBody.replaceAll("\n","")}]")
       }
+
   }
 
   private def constructBody(feaType: Int, landmarkType: Int, attrType: Int, base64Body: String) = {

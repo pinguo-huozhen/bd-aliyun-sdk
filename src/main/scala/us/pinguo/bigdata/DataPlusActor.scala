@@ -45,7 +45,7 @@ object DataPlusActor {
 
   case class ImageWH(width: Int, height: Int)
 
-  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null, error_message: String = null)
+  case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null, error_message: String = "")
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception {
     override def getMessage: String = s"$code - $msg"

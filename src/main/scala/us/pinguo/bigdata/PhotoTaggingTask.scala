@@ -81,7 +81,8 @@ class PhotoTaggingTask extends Actor with ActorLogging {
       download(processingPhotoEtag)
 
     case Left(throwable: Throwable) =>
-      log.error(throwable, s"error when downloading image [$processingPhotoEtag]")
+      log.error(throwable, s"ImageDownload ->error when downloading image [$processingPhotoEtag]")
+      receipt ! TaggingResponse(error_message = s"ImageDownload -> can not download image [$processingPhotoEtag]")
       context.stop(self)
 
     case Right(response: Response) if response.getStatusCode == 503 => download(processingPhotoEtag)
@@ -92,6 +93,11 @@ class PhotoTaggingTask extends Actor with ActorLogging {
       faceActor ! RequestFace(processingPhotoBody)
       itemActor ! RequestItem(processingPhotoBody)
       exifActor ! RequestExif(photo(processingPhotoEtag))
+
+    case Right(response: Response) if response.getStatusCode == 404 =>
+      log.error(s"ImageDownload -> can not download image [$processingPhotoEtag]")
+      receipt ! TaggingResponse(error_message = s"ImageDownload -> can not download image [$processingPhotoEtag]")
+      context.stop(self)
   }
 
   private def resultOf[T](key: ActorRef): T = {
