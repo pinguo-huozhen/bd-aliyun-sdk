@@ -32,6 +32,7 @@ class PhotoTaggingTask() extends Actor with ActorLogging {
   private val itemActor = context.actorOf(DataPlusItemActor.props(signature, organizationCode).withDispatcher("item-api-dispatcher"))
   private val exifActor = context.actorOf(ExifRetrieveActor.props())
   private val terminate = context.system.scheduler.scheduleOnce(20 seconds, self, PoisonPill)
+  private var cachedEtag: String = _
 
   private var results = Map[ActorRef, Either[String, TaggingResult]]()
 
@@ -56,7 +57,7 @@ class PhotoTaggingTask() extends Actor with ActorLogging {
 
 
   override def postStop(): Unit = {
-    log.info(s"task ${self.path.toStringWithoutAddress} completed in [${System.currentTimeMillis() - taskStarted}] ms")
+    log.info(s"task ${self.path.toStringWithoutAddress} etag:[$cachedEtag] completed in [${System.currentTimeMillis() - taskStarted}] ms")
     terminate.cancel()
   }
 
@@ -71,6 +72,7 @@ class PhotoTaggingTask() extends Actor with ActorLogging {
 
   private def processDownload: Receive = {
     case TaggingPhoto(etag) =>
+      cachedEtag = etag
       receipt = sender()
       processingPhotoEtag = etag
       download(processingPhotoEtag)
