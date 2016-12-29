@@ -21,7 +21,7 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
       "Authorization" -> s"Dataplus ${keys.access_id}:$signString")
   }
 
-  def header(requestUrl: String, method: String, accept: String = "json", contentType: String = "application/json") = {
+  def newHeader(requestUrl: String, method: String, accept: String = "json", contentType: String = "application/json") = {
     val gmtTime = currentGMTTime
     val signString = sign(requestUrl, method, accept, contentType, gmtTime)
     Map("accept" -> accept,
