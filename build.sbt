@@ -1,7 +1,7 @@
 lazy val `bd-aliyun-sdk` = (project in file("."))
   .settings(
     name := "bd-aliyun-sdk",
-    version := "0.1-SNAPSHOT",
+    version := "0.2-SNAPSHOT",
     scalaVersion := "2.11.8",
     libraryDependencies ++= Seq(
       "commons-codec" % "commons-codec" % "1.4",

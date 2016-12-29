@@ -21,12 +21,28 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
       "Authorization" -> s"Dataplus ${keys.access_id}:$signString")
   }
 
+  def header(requestUrl: String, method: String, accept: String = "json", contentType: String = "application/json") = {
+    val gmtTime = currentGMTTime
+    val signString = sign(requestUrl, method, accept, contentType, gmtTime)
+    Map("accept" -> accept,
+      "content-type" -> contentType,
+      "date" -> gmtTime,
+      "Authorization" -> s"Dataplus ${keys.access_id}:$signString")
+  }
+
   def base64Encode(bytes: Array[Byte]): String = Base64.getEncoder.encodeToString(bytes)
 
   def md5(bytes: Array[Byte]): String = DigestUtils.md5Hex(bytes)
 
   private def sign(requestUrl: String, body: Array[Byte], method: String, accept: String, contentType: String, gmtTime: String) = {
     val md5Body = base64Encode(DigestUtils.md5(body))
+    val urlStr = urlPath(requestUrl)
+    val signString = s"$method\n$accept\n$md5Body\n$contentType\n$gmtTime\n$urlStr"
+    base64Encode(hmac(keys.access_secret, signString))
+  }
+
+  private def sign(requestUrl: String, method: String, accept: String, contentType: String, gmtTime: String) = {
+    val md5Body = ""
     val urlStr = urlPath(requestUrl)
     val signString = s"$method\n$accept\n$md5Body\n$contentType\n$gmtTime\n$urlStr"
     base64Encode(hmac(keys.access_secret, signString))
