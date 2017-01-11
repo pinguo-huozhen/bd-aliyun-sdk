@@ -62,7 +62,7 @@ class DataPlusSignature(keys: DataPlusKeys) extends Serializable {
   }
 
   private def currentGMTTime = {
-    val format = new SimpleDateFormat("EEE d MMM yyyy HH:mm:ss 'GMT'", Locale.US)
+    val format = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss 'GMT'", Locale.US)
     format.setTimeZone(TimeZone.getTimeZone("GMT"))
     val time = Calendar.getInstance()
     format.format(time.getTime)

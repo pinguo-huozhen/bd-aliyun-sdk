@@ -1,7 +1,14 @@
+resolvers += "Artifactory" at "http://54.222.244.187:8081/artifactory/bigdata/"
+
+publishTo := Some("Artifactory Realm" at "http://54.222.244.187:8081/artifactory/bigdata;build.timestamp=" + new java.util.Date().getTime)
+
+credentials += Credentials(Path.userHome / ".sbt" / "credentials")
+
 lazy val `bd-aliyun-sdk` = (project in file("."))
   .settings(
     name := "bd-aliyun-sdk",
-    version := "0.2-SNAPSHOT",
+    organization := "us.pinguo.bigdata",
+    version := "0.1.1-SNAPSHOT",
     scalaVersion := "2.11.8",
     libraryDependencies ++= Seq(
       "commons-codec" % "commons-codec" % "1.4",

@@ -26,7 +26,7 @@ class DataPlusFaceActor(signature: DataPlusSignature, organize_code: String) ext
   override def receive: Receive = {
     case RequestFace(body) =>
       processingBody = body
-      val base64Body = constructBody(0, 0, 1, signature.base64Encode(processingBody))
+      val base64Body = constructBody(1, 0, 1, signature.base64Encode(processingBody))
       val headers = signature.header(requestURL, StringUtils.getBytesUtf8(base64Body), "POST")
       pipe(http(requestURL)
         .headers(headers.toArray: _*)

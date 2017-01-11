@@ -1,12 +1,11 @@
 package us.pinguo.bigdata
 
-import dispatch._
-import Defaults._
 import com.ning.http.client.Response
+import dispatch.Defaults._
+import dispatch._
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -18,12 +17,15 @@ object http {
       .setUseRawUrl(true)
   }
 
+
+
   def apply(uri: String, retires: Int = 5, timeout: FiniteDuration = 15 seconds): HttpRequest = new HttpRequest(client, uri, retires, timeout)
 }
 
 class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDuration) {
 
   private var req = url(uri)
+
 
   def query(parameters: (String, String)*): HttpRequest = {
     parameters.foreach(x => req = req.addQueryParameter(x._1, x._2))
@@ -76,6 +78,7 @@ class HttpRequest(client: Http, uri: String, retires: Int, timeout: FiniteDurati
   }
 
   def requestForBytes: Future[Either[Throwable, Array[Byte]]] = {
+
     request map {
       case Left(e) => Left(e)
       case Right(response) => Right(response.getResponseBodyAsBytes)

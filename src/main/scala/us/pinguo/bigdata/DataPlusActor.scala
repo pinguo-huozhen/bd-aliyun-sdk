@@ -29,6 +29,8 @@ object DataPlusActor {
 
   case class FaceTag(age: List[Int] = Nil, gender: List[Int] = Nil, landmark: List[Float] = Nil, number: Int = 0, rect: List[List[Int]] = Nil) extends TaggingResult
 
+  case class FaceTagNew(age: List[Int] = Nil, gender: List[Int] = Nil, landmark: List[Float] = Nil, dense: List[Float] = Nil, number: Int = 0, rect: List[Int] = Nil) extends TaggingResult
+
   case class ExifTag(YResolution: Option[ExifInfo], ResolutionUnit: Option[ExifInfo], Orientation: Option[ExifInfo],
                      ColorSpace: Option[ExifInfo], FlashPixVersion: Option[ExifInfo], DateTime: Option[ExifInfo],
                      ExifVersion: Option[ExifInfo], XResolution: Option[ExifInfo]) extends TaggingResult
@@ -46,6 +48,8 @@ object DataPlusActor {
   case class ImageWH(width: Int, height: Int)
 
   case class TaggingResponse(face: FaceTag = null, item: ItemTag = null, exif: ExifTag = null, imageCalWH: ImageWH = null, error_message: String = "")
+
+  case class UserTaggingResponse(face: FaceTagNew = null, item: ItemTag = null, tag_time: Long = System.currentTimeMillis())
 
   case class PhotoTaggingException(code: Int, msg: String) extends Exception {
     override def getMessage: String = s"$code - $msg"
